@@ -1,13 +1,12 @@
 name: Push package to Nuget.org
 on:
   workflow_dispatch: # Allow running the workflow manually from the GitHub UI
-  push:
-    branches:
-      - 'master'
+  #push:
+  #  branches:
+  #    - 'master'
 env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
   DOTNET_NOLOGO: true
-  NuGetDirectory: ${{ github.workspace}}/nuget
 
 defaults:
   run:
