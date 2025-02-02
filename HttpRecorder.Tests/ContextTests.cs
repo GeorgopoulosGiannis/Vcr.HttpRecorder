@@ -10,15 +10,8 @@ using Xunit;
 namespace HttpRecorder.Tests
 {
     [Collection(ServerCollection.Name)]
-    public class ContextTests
+    public class ContextTests(ServerFixture fixture)
     {
-        private readonly ServerFixture _fixture;
-
-        public ContextTests(ServerFixture fixture)
-        {
-            _fixture = fixture;
-        }
-
         [Fact]
         public async Task ItShouldWorkWithHttpRecorderContext()
         {
@@ -29,26 +22,26 @@ namespace HttpRecorder.Tests
                     "TheClient",
                     options =>
                     {
-                        options.BaseAddress = _fixture.ServerUri;
+                        options.BaseAddress = fixture.ServerUri;
                     });
 
-            HttpResponseMessage passthroughResponse = null;
-            using (var context = new HttpRecorderContext((sp, builder) => new HttpRecorderConfiguration
-            {
-                Mode = HttpRecorderMode.Record,
-                InteractionName = nameof(ItShouldWorkWithHttpRecorderContext),
-            }))
+            HttpResponseMessage passthroughResponse;
+            using (new HttpRecorderContext((_, _) => new HttpRecorderConfiguration
+                   {
+                       Mode = HttpRecorderMode.Record,
+                       InteractionName = nameof(ItShouldWorkWithHttpRecorderContext),
+                   }))
             {
                 var client = services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>().CreateClient("TheClient");
                 passthroughResponse = await client.GetAsync(ApiController.JsonUri);
                 passthroughResponse.EnsureSuccessStatusCode();
             }
 
-            using (var context = new HttpRecorderContext((sp, builder) => new HttpRecorderConfiguration
-            {
-                Mode = HttpRecorderMode.Replay,
-                InteractionName = nameof(ItShouldWorkWithHttpRecorderContext),
-            }))
+            using (new HttpRecorderContext((_, _) => new HttpRecorderConfiguration
+                   {
+                       Mode = HttpRecorderMode.Replay,
+                       InteractionName = nameof(ItShouldWorkWithHttpRecorderContext),
+                   }))
             {
                 var client = services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>().CreateClient("TheClient");
                 var response = await client.GetAsync(ApiController.JsonUri);
@@ -67,31 +60,31 @@ namespace HttpRecorder.Tests
                     "TheClient",
                     options =>
                     {
-                        options.BaseAddress = _fixture.ServerUri;
+                        options.BaseAddress = fixture.ServerUri;
                     });
 
-            HttpResponseMessage passthroughResponse = null;
-            using (var context = new HttpRecorderContext((sp, builder) => new HttpRecorderConfiguration
-            {
-                Enabled = false,
-                Mode = HttpRecorderMode.Record,
-                InteractionName = nameof(ItShouldWorkWithHttpRecorderContextWhenNotRecording),
-            }))
+            HttpResponseMessage passthroughResponse;
+            using (new HttpRecorderContext((_, _) => new HttpRecorderConfiguration
+                   {
+                       Enabled = false,
+                       Mode = HttpRecorderMode.Record,
+                       InteractionName = nameof(ItShouldWorkWithHttpRecorderContextWhenNotRecording),
+                   }))
             {
                 var client = services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>().CreateClient("TheClient");
                 passthroughResponse = await client.GetAsync(ApiController.JsonUri);
                 passthroughResponse.EnsureSuccessStatusCode();
             }
 
-            using (var context = new HttpRecorderContext((sp, builder) => new HttpRecorderConfiguration
-            {
-                Mode = HttpRecorderMode.Replay,
-                InteractionName = nameof(ItShouldWorkWithHttpRecorderContextWhenNotRecording),
-            }))
+            using (new HttpRecorderContext((_, _) => new HttpRecorderConfiguration
+                   {
+                       Mode = HttpRecorderMode.Replay,
+                       InteractionName = nameof(ItShouldWorkWithHttpRecorderContextWhenNotRecording),
+                   }))
             {
                 var client = services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>().CreateClient("TheClient");
                 Func<Task> act = async () => await client.GetAsync(ApiController.JsonUri);
-                act.Should().Throw<HttpRecorderException>();
+                await act.Should().ThrowAsync<HttpRecorderException>();
             }
         }
 
@@ -99,7 +92,7 @@ namespace HttpRecorder.Tests
         public void ItShouldNotAllowMultipleContexts()
         {
             using var context = new HttpRecorderContext();
-            Action act = () => { var ctx2 = new HttpRecorderContext(); };
+            var act = () => { var ctx2 = new HttpRecorderContext(); };
             act.Should().Throw<HttpRecorderException>().WithMessage("*multiple*");
         }
     }

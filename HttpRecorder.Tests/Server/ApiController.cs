@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Net;
+using Microsoft.AspNetCore.Mvc;
 
 namespace HttpRecorder.Tests.Server
 {
@@ -27,7 +28,7 @@ namespace HttpRecorder.Tests.Server
             => PhysicalFile(typeof(ApiController).Assembly.Location, "application/octet-stream");
 
         [HttpGet(StatusCodeUri)]
-        public IActionResult GetStatus([FromQuery] int? statusCode = 200)
-            => StatusCode(statusCode.Value);
+        public IActionResult GetStatus([FromQuery] HttpStatusCode? statusCode = HttpStatusCode.OK)
+            => StatusCode((int)statusCode!.Value);
     }
 }

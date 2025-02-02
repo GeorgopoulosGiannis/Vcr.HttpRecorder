@@ -95,7 +95,10 @@ namespace HttpRecorder.Repositories.HAR
             };
             AddHeadersWithoutValidation(response.Headers);
             AddHeadersWithoutValidation(response.Content?.Headers);
-
+            if (!response.Content?.Headers.TryGetValues("Content-Length", out var _) ?? false)
+            {
+                response.Content.Headers.ContentLength = null;
+            }
             return response;
         }
     }
