@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
 using System.Net.Http;
+using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,7 +13,6 @@ using HttpRecorder.Matchers;
 using HttpRecorder.Repositories;
 using HttpRecorder.Tests.Server;
 using Moq;
-using Newtonsoft.Json;
 using Xunit;
 
 namespace HttpRecorder.Tests
@@ -22,15 +23,8 @@ namespace HttpRecorder.Tests
     /// by timing issues.
     /// </summary>
     [Collection(ServerCollection.Name)]
-    public class HttpRecorderIntegrationTests
+    public class HttpRecorderIntegrationTests(ServerFixture fixture)
     {
-        private readonly ServerFixture _fixture;
-
-        public HttpRecorderIntegrationTests(ServerFixture fixture)
-        {
-            _fixture = fixture;
-        }
-
         [Fact]
         public async Task ItShouldGetJson()
         {
@@ -45,7 +39,7 @@ namespace HttpRecorder.Tests
                 if (mode == HttpRecorderMode.Passthrough)
                 {
                     passthroughResponse = response;
-                    var result = await response.Content.ReadAsAsync<SampleModel>();
+                    var result = await response.Content.ReadFromJsonAsync<SampleModel>();
                     result.Name.Should().Be(SampleModel.DefaultName);
                 }
                 else
@@ -70,7 +64,7 @@ namespace HttpRecorder.Tests
                 if (mode == HttpRecorderMode.Passthrough)
                 {
                     passthroughResponse = response;
-                    var result = await response.Content.ReadAsAsync<SampleModel>();
+                    var result = await response.Content.ReadFromJsonAsync<SampleModel>();
                     result.Name.Should().Be(name);
                 }
                 else
@@ -96,7 +90,7 @@ namespace HttpRecorder.Tests
                 if (mode == HttpRecorderMode.Passthrough)
                 {
                     passthroughResponse = response;
-                    var result = await response.Content.ReadAsAsync<SampleModel>();
+                    var result = await response.Content.ReadFromJsonAsync<SampleModel>();
                     result.Name.Should().Be(sampleModel.Name);
                 }
                 else
@@ -126,7 +120,7 @@ namespace HttpRecorder.Tests
                 if (mode == HttpRecorderMode.Passthrough)
                 {
                     passthroughResponse = response;
-                    var result = await response.Content.ReadAsAsync<SampleModel>();
+                    var result = await response.Content.ReadFromJsonAsync<SampleModel>();
                     result.Name.Should().Be(sampleModel.Name);
                 }
                 else
@@ -164,7 +158,7 @@ namespace HttpRecorder.Tests
                     {
                         var response = responses[i];
                         response.EnsureSuccessStatusCode();
-                        var result = await response.Content.ReadAsAsync<SampleModel>();
+                        var result = await response.Content.ReadFromJsonAsync<SampleModel>();
                         result.Name.Should().Be($"{i}");
                     }
                 }
@@ -186,20 +180,18 @@ namespace HttpRecorder.Tests
             }
 
             var client = CreateHttpClient(
-                HttpRecorderMode.Auto,
-                nameof(ItShouldExecuteMultipleRequestsInSequenceWithRecorderModeAuto));
+                HttpRecorderMode.Auto);
             var response1 = await client.GetAsync($"{ApiController.JsonUri}?name=1");
             var response2 = await client.GetAsync($"{ApiController.JsonUri}?name=2");
-            var result1 = await response1.Content.ReadAsAsync<SampleModel>();
+            var result1 = await response1.Content.ReadFromJsonAsync<SampleModel>();
             result1.Name.Should().Be("1");
 
-            var result2 = await response2.Content.ReadAsAsync<SampleModel>();
+            var result2 = await response2.Content.ReadFromJsonAsync<SampleModel>();
             result2.Name.Should().Be("2");
 
             // We resolve to replay at this point.
             client = CreateHttpClient(
-               HttpRecorderMode.Auto,
-               nameof(ItShouldExecuteMultipleRequestsInSequenceWithRecorderModeAuto));
+               HttpRecorderMode.Auto);
             var response2_1 = await client.GetAsync($"{ApiController.JsonUri}?name=1");
             var response2_2 = await client.GetAsync($"{ApiController.JsonUri}?name=2");
 
@@ -241,7 +233,7 @@ namespace HttpRecorder.Tests
 
             Func<Task> act = async () => await client.GetAsync(ApiController.JsonUri);
 
-            act.Should().Throw<HttpRecorderException>()
+            await act.Should().ThrowAsync<HttpRecorderException>()
                 .WithMessage($"*{TestFile}*");
         }
 
@@ -253,7 +245,7 @@ namespace HttpRecorder.Tests
 
             Func<Task> act = async () => await client.GetAsync(ApiController.JsonUri);
 
-            act.Should().Throw<HttpRecorderException>()
+            await act.Should().ThrowAsync<HttpRecorderException>()
                 .WithMessage($"*{file}*");
         }
 
@@ -270,18 +262,18 @@ namespace HttpRecorder.Tests
 
             Func<Task> act = async () => await client.GetAsync(ApiController.JsonUri);
 
-            act.Should().Throw<HttpRecorderException>()
+            await act.Should().ThrowAsync<HttpRecorderException>()
                 .WithMessage($"*{ApiController.JsonUri}*");
         }
 
         [Theory]
-        [InlineData(202)]
-        [InlineData(301)]
-        [InlineData(303)]
-        [InlineData(404)]
-        [InlineData(500)]
-        [InlineData(502)]
-        public async Task ItShouldGetStatus(int statusCode)
+        [InlineData(HttpStatusCode.Accepted)]
+        [InlineData(HttpStatusCode.MovedPermanently)]
+        [InlineData(HttpStatusCode.RedirectMethod)]
+        [InlineData(HttpStatusCode.NotFound)]
+        [InlineData(HttpStatusCode.InternalServerError)]
+        [InlineData(HttpStatusCode.BadGateway)]
+        public async Task ItShouldGetStatus(HttpStatusCode statusCode)
         {
             HttpResponseMessage passthroughResponse = null;
 
@@ -312,7 +304,7 @@ namespace HttpRecorder.Tests
 
                 Func<Task> act = () => client.GetAsync(ApiController.JsonUri);
 
-                act.Should().Throw<HttpRecorderException>();
+                await act.Should().ThrowAsync<HttpRecorderException>();
             }
             finally
             {
@@ -342,14 +334,14 @@ namespace HttpRecorder.Tests
             var client = CreateHttpClient(HttpRecorderMode.Auto, name, RulesMatcher.MatchMultiple);
 
             var response = await client.GetAsync(ApiController.JsonUri);
-            using (var readStream = await response.Content.ReadAsStreamAsync())
+            await using (await response.Content.ReadAsStreamAsync())
             {
             }
 
             response.EnsureSuccessStatusCode();
 
             response = await client.GetAsync(ApiController.JsonUri);
-            using (var readStream = await response.Content.ReadAsStreamAsync())
+            await using (await response.Content.ReadAsStreamAsync())
             {
             }
 
@@ -384,7 +376,7 @@ namespace HttpRecorder.Tests
                     InnerHandler = new HttpClientHandler(),
                 })
             {
-                BaseAddress = _fixture.ServerUri,
+                BaseAddress = fixture.ServerUri,
             };
     }
 }

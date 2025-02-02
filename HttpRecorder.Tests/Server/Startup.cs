@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace HttpRecorder.Tests.Server
@@ -9,7 +10,10 @@ namespace HttpRecorder.Tests.Server
     {
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddMvc();
+            services.AddMvc(o =>
+            {
+                o.EnableEndpointRouting = false;
+            });
         }
 
         public void Configure(IApplicationBuilder app)

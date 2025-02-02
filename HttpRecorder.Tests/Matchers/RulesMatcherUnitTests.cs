@@ -22,12 +22,13 @@ namespace HttpRecorder.Tests.Matchers
 
             var result = matcher.Match(request, interaction);
 
-            result.Response.RequestMessage.RequestUri.Should().BeEquivalentTo(new Uri("http://first"));
+            result.Response.RequestMessage.Should().NotBeNull();
+            result.Response.RequestMessage!.RequestUri.Should().BeEquivalentTo(new Uri("http://first"));
 
             result = matcher.Match(request, interaction);
 
             result.Should().NotBeNull();
-            result.Response.RequestMessage.RequestUri.Should().BeEquivalentTo(new Uri("http://second"));
+            result.Response.RequestMessage!.RequestUri.Should().BeEquivalentTo(new Uri("http://second"));
         }
 
         [Fact]
@@ -45,7 +46,8 @@ namespace HttpRecorder.Tests.Matchers
             var result = matcher.Match(request, interaction);
 
             result.Should().NotBeNull();
-            result.Response.RequestMessage.Method.Should().BeEquivalentTo(HttpMethod.Head);
+            result.Response.RequestMessage.Should().NotBeNull();
+            result.Response.RequestMessage!.Method.Should().BeEquivalentTo(HttpMethod.Head);
         }
 
         [Fact]
@@ -63,7 +65,8 @@ namespace HttpRecorder.Tests.Matchers
             var result = matcher.Match(request, interaction);
 
             result.Should().NotBeNull();
-            result.Response.RequestMessage.RequestUri.Should().BeEquivalentTo(new Uri("http://first?name=bar"));
+            result.Response.RequestMessage.Should().NotBeNull();
+            result.Response.RequestMessage!.RequestUri.Should().BeEquivalentTo(new Uri("http://first?name=bar"));
         }
 
         [Fact]
@@ -81,7 +84,8 @@ namespace HttpRecorder.Tests.Matchers
             var result = matcher.Match(request, interaction);
 
             result.Should().NotBeNull();
-            result.Response.RequestMessage.RequestUri.Should().BeEquivalentTo(new Uri("http://first?name=foo"));
+            result.Response.RequestMessage.Should().NotBeNull();
+            result.Response.RequestMessage!.RequestUri.Should().BeEquivalentTo(new Uri("http://first?name=foo"));
         }
 
         [Fact]
@@ -102,7 +106,8 @@ namespace HttpRecorder.Tests.Matchers
             var result = matcher.Match(request, interaction);
 
             result.Should().NotBeNull();
-            result.Response.RequestMessage.Headers.IfNoneMatch.ToString().Should().Be("second");
+            result.Response.RequestMessage.Should().NotBeNull();
+            result.Response.RequestMessage!.Headers.IfNoneMatch.ToString().Should().Be("second");
         }
 
         [Fact]
@@ -122,7 +127,8 @@ namespace HttpRecorder.Tests.Matchers
             var result = matcher.Match(request, interaction);
 
             result.Should().NotBeNull();
-            result.Response.RequestMessage.Content.Should().BeEquivalentTo(secondContent);
+            result.Response.RequestMessage.Should().NotBeNull();
+            result.Response.RequestMessage!.Content.Should().BeEquivalentTo(secondContent);
         }
 
         [Fact]
@@ -142,7 +148,8 @@ namespace HttpRecorder.Tests.Matchers
             var result = matcher.Match(request, interaction);
 
             result.Should().NotBeNull();
-            result.Response.RequestMessage.Content.Should().BeEquivalentTo(secondContent);
+            result.Response.RequestMessage.Should().NotBeNull();
+            result.Response.RequestMessage!.Content.Should().BeEquivalentTo(secondContent);
         }
 
         [Fact]
@@ -165,7 +172,8 @@ namespace HttpRecorder.Tests.Matchers
             var result = matcher.Match(request, interaction);
 
             result.Should().NotBeNull();
-            result.Response.RequestMessage.Content.Should().BeEquivalentTo(secondContent);
+            result.Response.RequestMessage.Should().NotBeNull();
+            result.Response.RequestMessage!.Content.Should().BeEquivalentTo(secondContent);
         }
 
         [Fact]
@@ -210,7 +218,8 @@ namespace HttpRecorder.Tests.Matchers
                 .ByRequestUri();
 
             var result = matcher.Match(request, interaction);
-            result.Response.RequestMessage.RequestUri.Should().BeEquivalentTo(new Uri("http://second"));
+            result.Response.RequestMessage.Should().NotBeNull();
+            result.Response.RequestMessage!.RequestUri.Should().BeEquivalentTo(new Uri("http://second"));
         }
 
         private Interaction BuildInteraction(params HttpRequestMessage[] requests)
