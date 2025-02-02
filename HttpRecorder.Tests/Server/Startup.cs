@@ -1,6 +1,6 @@
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace HttpRecorder.Tests.Server
@@ -13,6 +13,9 @@ namespace HttpRecorder.Tests.Server
             services.AddMvc(o =>
             {
                 o.EnableEndpointRouting = false;
+            }).AddJsonOptions(o =>
+            {
+                o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
             });
         }
 

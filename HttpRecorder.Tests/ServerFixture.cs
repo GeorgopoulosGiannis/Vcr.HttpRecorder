@@ -17,6 +17,7 @@ namespace HttpRecorder.Tests
         {
             ServerWebHost = WebHost
                 .CreateDefaultBuilder()
+                .UseKestrel()
                 .UseStartup<Startup>()
                 .UseUrls("http://127.0.0.1:0")
                 .Build();
