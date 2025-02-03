@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Text;
 using HttpRecorder.Tests.Server;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
@@ -15,6 +16,7 @@ namespace HttpRecorder.Tests
     {
         public ServerFixture()
         {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             ServerWebHost = WebHost
                 .CreateDefaultBuilder()
                 .UseKestrel()

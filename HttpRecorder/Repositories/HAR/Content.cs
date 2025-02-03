@@ -29,14 +29,14 @@ namespace HttpRecorder.Repositories.HAR
                 var bodyBytes = content.ReadAsByteArrayAsync().Result;
                 Size = bodyBytes.Length;
                 MimeType = content.Headers?.ContentType?.ToString();
-                if (content.IsBinary())
+                if (content.IsUtf8())
                 {
-                    Text = Convert.ToBase64String(bodyBytes);
-                    Encoding = EncodingBase64;
+                    Text = System.Text.Encoding.UTF8.GetString(bodyBytes);
                 }
                 else
                 {
-                    Text = System.Text.Encoding.UTF8.GetString(bodyBytes);
+                    Text = Convert.ToBase64String(bodyBytes);
+                    Encoding = EncodingBase64;
                 }
             }
         }
