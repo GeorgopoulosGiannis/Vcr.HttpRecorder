@@ -8,8 +8,13 @@ namespace HttpRecorder
     /// </summary>
     public static class HttpContentExtensions
     {
-        private static readonly Regex BinaryMimeRegex = new Regex("(image/*|audio/*|video/*|application/octet-stream|multipart/form-data)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-        private static readonly Regex FormDataMimeRegex = new Regex("application/x-www-form-urlencoded", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        private const string Utf8Encoding = "utf-8";
+
+        private static readonly Regex BinaryMimeRegex = new Regex("(image/*|audio/*|video/*|application/octet-stream|multipart/form-data)",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+        private static readonly Regex FormDataMimeRegex =
+            new Regex("application/x-www-form-urlencoded", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
         /// <summary>
         /// Indicates whether <paramref name="content"/> represents binary content.
@@ -26,6 +31,18 @@ namespace HttpRecorder
 
             return BinaryMimeRegex.IsMatch(contentType);
         }
+
+        /// <summary>
+        /// Indicates whether <paramref name="content"/> represents string in utf8 encoding.
+        /// </summary>
+        /// <param name="content">The <see cref="HttpContent"/>.</param>
+        /// <returns>true if content-encoding is utf8, false otherwise.</returns>
+        public static bool IsUtf8(this HttpContent content)
+        {
+            var contentType = content?.Headers?.ContentType?.CharSet;
+            return contentType == Utf8Encoding;
+        }
+
 
         /// <summary>
         /// Indicates whether <paramref name="content"/> represents form data (URL-encoded) content.

@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
@@ -108,10 +109,7 @@ namespace HttpRecorder.Tests
 
             await ExecuteModeIterations(async (client, mode) =>
             {
-                var formContent = new FormUrlEncodedContent(new[]
-                {
-                    new KeyValuePair<string, string>("name", sampleModel.Name),
-                });
+                var formContent = new FormUrlEncodedContent(new[] { new KeyValuePair<string, string>("name", sampleModel.Name), });
 
                 var response = await client.PostAsync(ApiController.FormDataUri, formContent);
 
@@ -191,7 +189,7 @@ namespace HttpRecorder.Tests
 
             // We resolve to replay at this point.
             client = CreateHttpClient(
-               HttpRecorderMode.Auto);
+                HttpRecorderMode.Auto);
             var response2_1 = await client.GetAsync($"{ApiController.JsonUri}?name=1");
             var response2_2 = await client.GetAsync($"{ApiController.JsonUri}?name=2");
 
@@ -321,16 +319,17 @@ namespace HttpRecorder.Tests
                 repository: repositoryMock.Object,
                 anonymizer: RulesInteractionAnonymizer.Default.AnonymizeRequestQueryStringParameter("key"));
             await client.GetAsync($"{ApiController.JsonUri}?key=foo");
-            repositoryMock.Verify(
-                x => x.StoreAsync(
-                    It.Is<Interaction>(i => i.Messages[0].Response.RequestMessage.RequestUri.ToString().EndsWith($"{ApiController.JsonUri}?key={RulesInteractionAnonymizer.DefaultAnonymizerReplaceValue}", StringComparison.Ordinal)),
-                    It.IsAny<CancellationToken>()));
+            repositoryMock.Verify(x => x.StoreAsync(
+                It.Is<Interaction>(i =>
+                    i.Messages[0].Response.RequestMessage.RequestUri.ToString()
+                        .EndsWith($"{ApiController.JsonUri}?key={RulesInteractionAnonymizer.DefaultAnonymizerReplaceValue}", StringComparison.Ordinal)),
+                It.IsAny<CancellationToken>()));
         }
 
         [Fact]
         public async Task ItShouldMatchMultipleWhenDisposingTheFirst()
         {
-            var name = $"{nameof(ItShouldExecuteMultipleRequestsInSequenceWithRecorderModeAuto)}.har";
+            var name = $"{nameof(ItShouldMatchMultipleWhenDisposingTheFirst)}.har";
             var client = CreateHttpClient(HttpRecorderMode.Auto, name, RulesMatcher.MatchMultiple);
 
             var response = await client.GetAsync(ApiController.JsonUri);
@@ -348,15 +347,36 @@ namespace HttpRecorder.Tests
             response.EnsureSuccessStatusCode();
         }
 
+        [Fact]
+        public async Task ItShouldUseContentDecoding()
+        {
+            var client = CreateHttpClient(HttpRecorderMode.Record);
+
+            var response = await client.GetAsync(ApiController.Windows1253EncodingUri);
+            response.EnsureSuccessStatusCode();
+            var response1 = await DecodeWindows1253(response);
+
+            client = CreateHttpClient(HttpRecorderMode.Replay);
+
+            response = await client.GetAsync(ApiController.Windows1253EncodingUri);
+            response.EnsureSuccessStatusCode();
+            var response2 = await DecodeWindows1253(response);
+
+            response1.Should().BeEquivalentTo(response2);
+        }
+
+        private async Task<string> DecodeWindows1253(HttpResponseMessage response)
+        {
+            var soft1Encoding = CodePagesEncodingProvider.Instance.GetEncoding(1253)
+                                ?? throw new Exception("Encoding not found");
+            var stream = await response.Content.ReadAsStreamAsync();
+            using StreamReader reader = new(stream, soft1Encoding);
+            return await reader.ReadToEndAsync();
+        }
+
         private async Task ExecuteModeIterations(Func<HttpClient, HttpRecorderMode, Task> test, [CallerMemberName] string testName = "")
         {
-            var iterations = new[]
-            {
-                HttpRecorderMode.Passthrough,
-                HttpRecorderMode.Record,
-                HttpRecorderMode.Replay,
-                HttpRecorderMode.Auto,
-            };
+            var iterations = new[] { HttpRecorderMode.Passthrough, HttpRecorderMode.Record, HttpRecorderMode.Replay, HttpRecorderMode.Auto, };
             foreach (var mode in iterations)
             {
                 var client = CreateHttpClient(mode, testName);
@@ -374,9 +394,6 @@ namespace HttpRecorder.Tests
                 new HttpRecorderDelegatingHandler(testName, mode: mode, matcher: matcher, repository: repository, anonymizer: anonymizer)
                 {
                     InnerHandler = new HttpClientHandler(),
-                })
-            {
-                BaseAddress = fixture.ServerUri,
-            };
+                }) { BaseAddress = fixture.ServerUri, };
     }
 }

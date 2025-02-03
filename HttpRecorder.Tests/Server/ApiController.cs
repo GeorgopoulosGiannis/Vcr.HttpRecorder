@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HttpRecorder.Tests.Server
@@ -7,6 +8,7 @@ namespace HttpRecorder.Tests.Server
     public class ApiController : ControllerBase
     {
         public const string JsonUri = "json";
+        public const string Windows1253EncodingUri = "windows1253";
         public const string FormDataUri = "formdata";
         public const string BinaryUri = "binary";
         public const string StatusCodeUri = "status";
@@ -30,5 +32,20 @@ namespace HttpRecorder.Tests.Server
         [HttpGet(StatusCodeUri)]
         public IActionResult GetStatus([FromQuery] HttpStatusCode? statusCode = HttpStatusCode.OK)
             => StatusCode((int)statusCode!.Value);
+
+        [HttpGet(Windows1253EncodingUri)]
+        public IActionResult GetWindows1253Encoding()
+        {
+            const string ResponseText = "Γειά σου κόσμε"; // Example Greek text
+            var encoding = CodePagesEncodingProvider.Instance.GetEncoding(1253)!;
+            var encodedBytes = encoding.GetBytes(ResponseText);
+            var encodedString = encoding.GetString(encodedBytes);
+            return new ContentResult
+            {
+                Content = $"{{\"message\":\"{encodedString}\"}}",
+                ContentType = "application/json; charset=windows-1253",
+                StatusCode = 200,
+            };
+        }
     }
 }
