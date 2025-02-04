@@ -159,49 +159,41 @@ services
 
 ### Recorder Context
 
-It is sometime helpful to be able to decoralate the injection of the `HttpRecorderDelegatingHandler`
-and the Test case setup.
+It is sometimes helpful to be able to decouple the injection of the `HttpRecorderDelegatingHandler`
+from the test case setup.
 
 This is especially useful in the context of ASP.NET Core Integration tests.
 
-It is possible to add the `HttpRecorderDelegatingHandler` globally to all `HttpClient` managed by the `IHttpClientFactory`,
-and then to customize the recording in the test case by using the `HttpRecorderContext`.
+It is possible to add the `HttpRecorderDelegatingHandler` globally to all `HttpClient` instances managed by the `IHttpClientFactory`,
+and then customize the recording in the test case by using the `HttpRecorderContext`.
 
-Here is how to do it:
+#### Concurrent Recorder Context
+
+By default, `HttpRecorderContext` does not support concurrent execution of different test cases. To enable concurrent execution, use `HttpRecorderConcurrentContext` and `AddHttpRecorderConcurrentContextSupport`.
 
 ```csharp
 // When registering the services, do the following:
-services.AddHttpRecorderContextSupport();
+services.AddHttpRecorderConcurrentContextSupport();
 // This can be done in the ConfigureWebHost method of the WebApplicationFactory for example.
 // It will inject the HttpRecorderDelegatingHandler in all HttpClients.
 
-// Then, write your test cases using the following pattern:
+// Additional configuration per HttpClient can be set up as well:
 [Fact]
 public async Task ItShould()
 {
-    using var context = new HttpRecorderContext(); // Notice the using pattern here.
-    // .. Perform test case. Interactions are recorded and replay as expected :-)
-}
-
-// Additional configuration per HttpClient can be setup as well:
-[Fact]
-public async Task ItShould()
-{
-    using var context = new HttpRecorderContext((sp, builder) =>
+    using var context = new HttpRecorderConcurrentContext((_, _) => new HttpRecorderConfiguration
         {
-            return builder.Name switch // The builder name here is the name of the HttpClient.
-            {
-                nameof(TypedClient) => new HttpRecorderConfiguration
-                {
-                    Matcher = RulesMatcher.MatchMultiple,
-                },
-                nameof(DisabledClient) => new HttpRecorderConfiguration
-                {
-                    Enabled = false,
-                },
-                _ => null // Default configuration.
-            };
+            Mode = HttpRecorderMode.Auto,
         });
+    
+    var client = webAppFactory.WithWebHostBuilder(x =>
+        {
+            x.ConfigureTestServices(s =>
+            {
+                services.AddHttpRecorderConcurrentContextSupport();            
+            });
+        }).CreateClient();
+
     // .. Perform test case.
 }
 ```
