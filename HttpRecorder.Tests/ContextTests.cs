@@ -28,8 +28,7 @@ namespace HttpRecorder.Tests
             HttpResponseMessage passthroughResponse;
             using (new HttpRecorderContext((_, _) => new HttpRecorderConfiguration
                    {
-                       Mode = HttpRecorderMode.Record,
-                       InteractionName = nameof(ItShouldWorkWithHttpRecorderContext),
+                       Mode = HttpRecorderMode.Record, InteractionName = nameof(ItShouldWorkWithHttpRecorderContext),
                    }))
             {
                 var client = services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>().CreateClient("TheClient");
@@ -39,8 +38,7 @@ namespace HttpRecorder.Tests
 
             using (new HttpRecorderContext((_, _) => new HttpRecorderConfiguration
                    {
-                       Mode = HttpRecorderMode.Replay,
-                       InteractionName = nameof(ItShouldWorkWithHttpRecorderContext),
+                       Mode = HttpRecorderMode.Replay, InteractionName = nameof(ItShouldWorkWithHttpRecorderContext),
                    }))
             {
                 var client = services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>().CreateClient("TheClient");
@@ -66,9 +64,7 @@ namespace HttpRecorder.Tests
             HttpResponseMessage passthroughResponse;
             using (new HttpRecorderContext((_, _) => new HttpRecorderConfiguration
                    {
-                       Enabled = false,
-                       Mode = HttpRecorderMode.Record,
-                       InteractionName = nameof(ItShouldWorkWithHttpRecorderContextWhenNotRecording),
+                       Enabled = false, Mode = HttpRecorderMode.Record, InteractionName = nameof(ItShouldWorkWithHttpRecorderContextWhenNotRecording),
                    }))
             {
                 var client = services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>().CreateClient("TheClient");
@@ -78,8 +74,7 @@ namespace HttpRecorder.Tests
 
             using (new HttpRecorderContext((_, _) => new HttpRecorderConfiguration
                    {
-                       Mode = HttpRecorderMode.Replay,
-                       InteractionName = nameof(ItShouldWorkWithHttpRecorderContextWhenNotRecording),
+                       Mode = HttpRecorderMode.Replay, InteractionName = nameof(ItShouldWorkWithHttpRecorderContextWhenNotRecording),
                    }))
             {
                 var client = services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>().CreateClient("TheClient");
@@ -89,10 +84,13 @@ namespace HttpRecorder.Tests
         }
 
         [Fact]
-        public void ItShouldNotAllowMultipleContexts()
+        public void ItShouldNotAllowMultipleContextsUnderTheSameTest()
         {
             using var context = new HttpRecorderContext();
-            var act = () => { var ctx2 = new HttpRecorderContext(); };
+            var act = () =>
+            {
+                var ctx2 = new HttpRecorderContext();
+            };
             act.Should().Throw<HttpRecorderException>().WithMessage("*multiple*");
         }
     }
