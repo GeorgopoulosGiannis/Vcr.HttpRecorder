@@ -95,6 +95,22 @@ namespace HttpRecorder.Tests
         }
 
         [Fact]
+        public void ItShouldThrowExceptionWhenContextIsRegisterUnderDifferentIdentifier()
+        {
+            var serviceCollection = CreateServiceCollection();
+
+            using var context = new HttpRecorderContext((_, _) => new HttpRecorderConfiguration
+            {
+                Mode = HttpRecorderMode.Record, InteractionName = nameof(ItShouldWorkWithHttpRecorderContext),
+            });
+            var act = () =>
+            {
+                serviceCollection.BuildServiceProvider().GetRequiredService<IHttpClientFactory>().CreateClient("TheClient");
+            };
+            act.Should().Throw<HttpRecorderException>().WithMessage("*Could not find*");
+        }
+
+        [Fact]
         public async Task ItShouldWorkWithMultipleContextsUnderDifferentTests()
         {
             var test1Task = Test1();
@@ -102,6 +118,20 @@ namespace HttpRecorder.Tests
             await Task.WhenAll([test1Task, test2Task]);
             (await test1Task).Should().BeTrue();
             (await test2Task).Should().BeTrue();
+        }
+
+        private ServiceCollection CreateServiceCollection()
+        {
+            var services = new ServiceCollection();
+            services
+                .AddHttpRecorderContextSupport()
+                .AddHttpClient(
+                    "TheClient",
+                    options =>
+                    {
+                        options.BaseAddress = fixture.ServerUri;
+                    });
+            return services;
         }
 
         private async Task<bool> Test1()

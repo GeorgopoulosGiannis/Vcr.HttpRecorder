@@ -32,6 +32,10 @@ namespace HttpRecorder.Context
         /// using var context = new HttpRecorderContext();
         /// ]]>
         /// </example>
+        /// <remarks>
+        /// `services.AddRecorderContextSupport();` and `using var context = new HttpRecorderContext();`
+        /// should be placed under the same test method
+        /// </remarks>
         public HttpRecorderContext(
             Func<IServiceProvider, HttpMessageHandlerBuilder, HttpRecorderConfiguration> configurationFactory = null,
             [CallerMemberName] string testName = "",
