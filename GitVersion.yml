@@ -1,10 +1,2 @@
-mode: Mainline
-branches:
-  master:
-    increment: Patch
-    is-release-branch: true
-  pull-request:
-    tag: rc
-    increment: Patch
-ignore:
-  sha: []
+workflow: GitHubFlow/v1
+mode: ContinuousDelivery
