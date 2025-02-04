@@ -4,8 +4,8 @@ using System.IO;
 namespace HttpRecorder.Context
 {
     /// <summary>
-    /// A utility class that wraps identifiers for retrieving <see cref="HttpRecorderContext"/> from
-    /// <see cref="HttpRecorderContext.GetContext"/>
+    /// A utility class that wraps identifiers for retrieving <see cref="HttpRecorderConcurrentContext"/> from
+    /// <see cref="HttpRecorderConcurrentContext.GetContext"/>
     /// </summary>
     public class HttpRecordedContextIdentifier : IEquatable<HttpRecordedContextIdentifier>
     {
