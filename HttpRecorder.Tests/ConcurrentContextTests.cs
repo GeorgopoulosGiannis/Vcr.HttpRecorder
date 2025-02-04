@@ -41,7 +41,7 @@ public class ConcurrentContextTests(ServerFixture fixture)
     {
         var services = new ServiceCollection();
         services
-            .AddConcurrentHttpRecorderContextSupport()
+            .AddHttpRecorderConcurrentContextSupport()
             .AddHttpClient(
                 "TheClient",
                 options =>
@@ -55,7 +55,7 @@ public class ConcurrentContextTests(ServerFixture fixture)
     {
         var services = new ServiceCollection();
         services
-            .AddConcurrentHttpRecorderContextSupport()
+            .AddHttpRecorderConcurrentContextSupport()
             .AddHttpClient(
                 "TheClient",
                 options =>
@@ -73,7 +73,7 @@ public class ConcurrentContextTests(ServerFixture fixture)
     {
         var services = new ServiceCollection();
         services
-            .AddConcurrentHttpRecorderContextSupport()
+            .AddHttpRecorderConcurrentContextSupport()
             .AddHttpClient(
                 "TheClient",
                 options =>

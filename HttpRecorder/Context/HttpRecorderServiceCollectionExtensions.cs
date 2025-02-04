@@ -30,7 +30,7 @@ namespace HttpRecorder.Context
         /// <param name="testName">The <see cref="CallerMemberNameAttribute"/>.</param>
         /// <param name="filePath">The <see cref="CallerFilePathAttribute"/>.</param>
         /// <returns>The updated <see cref="IServiceCollection"/>.</returns>
-        public static IServiceCollection AddConcurrentHttpRecorderContextSupport(this IServiceCollection services,
+        public static IServiceCollection AddHttpRecorderConcurrentContextSupport(this IServiceCollection services,
             [CallerMemberName] string testName = "",
             [CallerFilePath] string filePath = "")
         {
