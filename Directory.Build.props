@@ -12,6 +12,7 @@
     <NoWarn>1701;1702;1998</NoWarn>
     <PackageProjectUrl>https://github.com/GeorgopoulosGiannis/HttpRecorder</PackageProjectUrl>
     <Deterministic>true</Deterministic>
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>

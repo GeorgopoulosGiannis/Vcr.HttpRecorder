@@ -63,7 +63,8 @@ public class ConcurrentContextTests(ServerFixture fixture)
                     options.BaseAddress = fixture.ServerUri;
                 });
 
-        using var context = new HttpRecorderConcurrentContext((_, _) => new HttpRecorderConfiguration { Mode = HttpRecorderMode.Record, });
+        using var context = new HttpRecorderConcurrentContext((_, _) =>
+            new HttpRecorderConfiguration { Mode = HttpRecorderMode.Record, InteractionName = nameof(Test1) });
         var client = services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>().CreateClient("TheClient");
         var passthroughResponse = await client.GetAsync(ApiController.JsonUri);
         return passthroughResponse.IsSuccessStatusCode;
@@ -81,7 +82,10 @@ public class ConcurrentContextTests(ServerFixture fixture)
                     options.BaseAddress = fixture.ServerUri;
                 });
 
-        using var context = new HttpRecorderConcurrentContext((_, _) => new HttpRecorderConfiguration { Mode = HttpRecorderMode.Record, });
+        using var context = new HttpRecorderConcurrentContext((_, _) => new HttpRecorderConfiguration
+        {
+            Mode = HttpRecorderMode.Record, InteractionName = nameof(Test2),
+        });
         var client = services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>().CreateClient("TheClient");
         var passthroughResponse = await client.GetAsync(ApiController.JsonUri);
         return passthroughResponse.IsSuccessStatusCode;
