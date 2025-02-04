@@ -1,8 +1,8 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using Microsoft.Extensions.Http;
 
 namespace HttpRecorder.Context
@@ -12,9 +12,9 @@ namespace HttpRecorder.Context
     /// </summary>
     public sealed class HttpRecorderContext : IDisposable
     {
-        private static HttpRecorderContext _current;
+        private static readonly ConcurrentDictionary<string, HttpRecorderContext> contexts 
+            = new ConcurrentDictionary<string, HttpRecorderContext>();
 
-        private static volatile ReaderWriterLockSlim _lock = new ReaderWriterLockSlim();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="HttpRecorderContext"/> class.
@@ -22,11 +22,12 @@ namespace HttpRecorder.Context
         /// <param name="configurationFactory">Factory to allow customization per <see cref="HttpClient"/>.</param>
         /// <param name="testName">The <see cref="CallerMemberNameAttribute"/>.</param>
         /// <param name="filePath">The <see cref="CallerFilePathAttribute"/>.</param>
+        /// <param name="lineNumber"></param>
         /// <example>
         /// <![CDATA[
         /// // In service registration.
         /// services.AddRecorderContextSupport();
-        ///
+        /// 
         /// // In the test case.
         /// using var context = new HttpRecorderContext();
         /// ]]>
@@ -34,46 +35,40 @@ namespace HttpRecorder.Context
         public HttpRecorderContext(
             Func<IServiceProvider, HttpMessageHandlerBuilder, HttpRecorderConfiguration> configurationFactory = null,
             [CallerMemberName] string testName = "",
-            [CallerFilePath] string filePath = "")
+            [CallerFilePath] string filePath = "",
+            [CallerLineNumber] int lineNumber = 0)
         {
             ConfigurationFactory = configurationFactory;
             TestName = testName;
             FilePath = filePath;
-            _lock.EnterWriteLock();
-            try
-            {
-                if (_current != null)
-                {
-                    throw new HttpRecorderException(
-                        $"Cannot use multiple {nameof(HttpRecorderContext)} at the same time. Previous usage: {_current.FilePath}, current usage: {filePath}.");
-                }
+            LineNumber = lineNumber;
+            Identifier = new HttpRecordedContextIdentifier(FilePath,testName);
 
-                _current = this;
-            }
-            finally
+
+            if (!contexts.TryAdd(Identifier.Value, this))
             {
-                _lock.ExitWriteLock();
+                throw new HttpRecorderException(
+                    $"Cannot use multiple {nameof(HttpRecorderContext)} for the same identifier: {Identifier} at the same time. Previous usage line number: {LineNumber}, current usage line number: {lineNumber}.");
             }
         }
-
+        
         /// <summary>
-        /// Gets the current <see cref="HttpRecorderContext"/>.
+        /// Retrieves the <see cref="HttpRecorderContext"/> with the associated <see cref="Identifier"/>
         /// </summary>
-        public static HttpRecorderContext Current
+        /// <param name="identifier"></param>
+        /// <returns></returns>
+        /// <exception cref="HttpRecorderException"></exception>
+        public static HttpRecorderContext GetContext(HttpRecordedContextIdentifier identifier)
         {
-            get
+            if (!contexts.TryGetValue(identifier.Value, out var context))
             {
-                _lock.EnterReadLock();
-                try
-                {
-                    return _current;
-                }
-                finally
-                {
-                    _lock.ExitReadLock();
-                }
+                throw new HttpRecorderException($"Could not find {nameof(HttpRecorderContext)} for input identifier {identifier}." +
+                                                $"Make sure that {nameof(HttpRecorderServiceCollectionExtensions.AddHttpRecorderContextSupport)} has been called in the same function were the `using var ctx= {nameof(HttpRecorderContext)}` was called");
             }
+
+            return context;
         }
+
 
         /// <summary>
         /// Gets the configuration factory.
@@ -90,20 +85,24 @@ namespace HttpRecorder.Context
         /// </summary>
         public string FilePath { get; }
 
+        /// <summary>
+        /// Gets the LineNumber, which should be the <see cref="CallerLineNumberAttribute"/>
+        /// </summary>
+        public int LineNumber { get; }
+
+        /// <summary>
+        /// Gets the identifier for the context, which should be the <see cref="FilePath"/> combined with the <see cref="TestName"/>.
+        /// <example>{FilePath}.{TestName}</example>
+        /// </summary>
+        public HttpRecordedContextIdentifier Identifier { get; }
+
         /// <inheritdoc/>
         [SuppressMessage("Design", "CA1063:Implement IDisposable Correctly", Justification = "Dispose pattern used for context here, not resource diposal.")]
-        [SuppressMessage("Usage", "CA1816:Dispose methods should call SuppressFinalize", Justification = "Dispose pattern used for context here, not resource diposal.")]
+        [SuppressMessage("Usage", "CA1816:Dispose methods should call SuppressFinalize",
+            Justification = "Dispose pattern used for context here, not resource diposal.")]
         public void Dispose()
         {
-            _lock.EnterWriteLock();
-            try
-            {
-                _current = null;
-            }
-            finally
-            {
-                _lock.ExitWriteLock();
-            }
+            contexts.TryRemove(Identifier.Value, out _);
         }
     }
 }
