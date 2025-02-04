@@ -46,7 +46,7 @@ namespace HttpRecorder.Context
             FilePath = filePath;
             LineNumber = lineNumber;
             Identifier = new HttpRecordedContextIdentifier(FilePath, testName);
-
+            
 
             if (!contexts.TryAdd(Identifier.Value, this))
             {
