@@ -15,6 +15,7 @@
         <WarningsNotAsErrors>S2325</WarningsNotAsErrors>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
         <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="SonarAnalyzer.CSharp" Version="10.6.0.109712">
