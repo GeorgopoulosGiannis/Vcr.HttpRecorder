@@ -1,34 +1,25 @@
 <Project>
-  <!-- Common properties for all projects -->
-  <PropertyGroup>
-    <Authors>GiannisGeorgopoulos</Authors>
-    <Description>Fork of https://github.com/nventive/HttpRecorder</Description>
-    <Copyright>Copyright (c) 2024, GiannisGeorgopoulos</Copyright>
-    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-    <Product>Vcr.HttpRecorder</Product>
-    <LangVersion>8.0</LangVersion>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsAsErrors />
-    <NoWarn>1701;1702;1998</NoWarn>
-    <PackageProjectUrl>https://github.com/GeorgopoulosGiannis/Vcr.HttpRecorder</PackageProjectUrl>
-    <Deterministic>true</Deterministic>
-    <IsPackable>true</IsPackable>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="3.3.2">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Include="..\GlobalSuppressions.cs" Link="Properties\GlobalSuppressions.cs" />
-    <AdditionalFiles Include="..\stylecop.json" Link="Properties\stylecop.json" />
-    <None Include="..\icon.png" Pack="true" PackagePath="\" Link="Properties\icon.png"/>
-  </ItemGroup>
+    <!-- Common properties for all projects -->
+    <PropertyGroup>
+        <Authors>GiannisGeorgopoulos</Authors>
+        <Description>Fork of https://github.com/nventive/HttpRecorder</Description>
+        <Copyright>Copyright (c) 2024, GiannisGeorgopoulos</Copyright>
+        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+        <Product>Vcr.HttpRecorder</Product>
+        <LangVersion>8.0</LangVersion>
+        <PackageProjectUrl>https://github.com/GeorgopoulosGiannis/Vcr.HttpRecorder</PackageProjectUrl>
+        <Deterministic>true</Deterministic>
+        <IsPackable>true</IsPackable>
+        <AnalysisLevel>latest</AnalysisLevel>
+        <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+        <WarningsNotAsErrors>S2325</WarningsNotAsErrors>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="SonarAnalyzer.CSharp" Version="10.6.0.109712">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
 </Project>

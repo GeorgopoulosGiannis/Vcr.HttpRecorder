@@ -31,11 +31,12 @@ namespace HttpRecorder.Anonymizers
         public static RulesInteractionAnonymizer Default { get; } = new RulesInteractionAnonymizer();
 
         /// <inheritdoc />
-        async Task<Interaction> IInteractionAnonymizer.Anonymize(Interaction interaction, CancellationToken cancellationToken)
+        Task<Interaction> IInteractionAnonymizer.Anonymize(Interaction interaction,
+            CancellationToken cancellationToken)
         {
             if (!_rules.Any())
             {
-                return interaction;
+                return Task.FromResult(interaction);
             }
 
             if (interaction == null)
@@ -43,7 +44,7 @@ namespace HttpRecorder.Anonymizers
                 throw new ArgumentNullException(nameof(interaction));
             }
 
-            return new Interaction(interaction.Name, interaction.Messages.Select(x =>
+            return Task.FromResult(new Interaction(interaction.Name, interaction.Messages.Select(x =>
             {
                 foreach (var rule in _rules)
                 {
@@ -51,7 +52,7 @@ namespace HttpRecorder.Anonymizers
                 }
 
                 return x;
-            }));
+            })));
         }
 
         /// <summary>
@@ -68,7 +69,8 @@ namespace HttpRecorder.Anonymizers
         /// <param name="parameterName">The query parameter name.</param>
         /// <param name="pattern">The replacement pattern. Defaults to <see cref="DefaultAnonymizerReplaceValue"/>.</param>
         /// <returns>A new instance of <see cref="RulesInteractionAnonymizer"/> with the added rule.</returns>
-        public RulesInteractionAnonymizer AnonymizeRequestQueryStringParameter(string parameterName, string pattern = DefaultAnonymizerReplaceValue)
+        public RulesInteractionAnonymizer AnonymizeRequestQueryStringParameter(string parameterName,
+            string pattern = DefaultAnonymizerReplaceValue)
             => WithRule((x) =>
             {
                 if (!string.IsNullOrEmpty(x.Response?.RequestMessage?.RequestUri?.Query))
@@ -77,7 +79,8 @@ namespace HttpRecorder.Anonymizers
                     if (!string.IsNullOrEmpty(queryString[parameterName]))
                     {
                         queryString[parameterName] = pattern;
-                        x.Response.RequestMessage.RequestUri = new Uri($"{x.Response.RequestMessage.RequestUri.GetLeftPart(UriPartial.Path)}?{queryString}");
+                        x.Response.RequestMessage.RequestUri = new Uri(
+                            $"{x.Response.RequestMessage.RequestUri.GetLeftPart(UriPartial.Path)}?{queryString}");
                     }
                 }
             });
@@ -88,7 +91,8 @@ namespace HttpRecorder.Anonymizers
         /// <param name="headerName">The header name.</param>
         /// <param name="pattern">The replacement pattern. Defaults to <see cref="DefaultAnonymizerReplaceValue"/>.</param>
         /// <returns>A new instance of <see cref="RulesInteractionAnonymizer"/> with the added rule.</returns>
-        public RulesInteractionAnonymizer AnonymizeRequestHeader(string headerName, string pattern = DefaultAnonymizerReplaceValue)
+        public RulesInteractionAnonymizer AnonymizeRequestHeader(string headerName,
+            string pattern = DefaultAnonymizerReplaceValue)
             => WithRule((x) =>
             {
                 if (x.Response?.RequestMessage == null)
@@ -102,7 +106,8 @@ namespace HttpRecorder.Anonymizers
                     x.Response.RequestMessage.Headers.TryAddWithoutValidation(headerName, pattern);
                 }
 
-                if (x.Response.RequestMessage.Content != null && x.Response.RequestMessage.Content.Headers.Contains(headerName))
+                if (x.Response.RequestMessage.Content != null &&
+                    x.Response.RequestMessage.Content.Headers.Contains(headerName))
                 {
                     x.Response.RequestMessage.Content.Headers.Remove(headerName);
                     x.Response.RequestMessage.Content.Headers.TryAddWithoutValidation(headerName, pattern);

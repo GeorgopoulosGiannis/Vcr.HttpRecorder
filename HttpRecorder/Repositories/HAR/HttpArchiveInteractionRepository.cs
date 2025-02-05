@@ -80,7 +80,7 @@ namespace HttpRecorder.Repositories.HAR
             }
         }
 
-        private string GetFilePath(string interactionName)
+        private static string GetFilePath(string interactionName)
             => Path.HasExtension(interactionName)
                 ? Path.GetFullPath(interactionName)
                 : Path.GetFullPath($"{interactionName}.har");

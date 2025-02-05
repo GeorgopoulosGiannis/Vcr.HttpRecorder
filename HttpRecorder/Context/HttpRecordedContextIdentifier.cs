@@ -7,7 +7,7 @@ namespace HttpRecorder.Context
     /// A utility class that wraps identifiers for retrieving <see cref="HttpRecorderConcurrentContext"/> from
     /// <see cref="HttpRecorderConcurrentContext.GetContext"/>
     /// </summary>
-    public class HttpRecordedContextIdentifier : IEquatable<HttpRecordedContextIdentifier>
+    public sealed class HttpRecordedContextIdentifier : IEquatable<HttpRecordedContextIdentifier>
     {
         /// <inheridoc/>
         public HttpRecordedContextIdentifier(string filePath, string testName)

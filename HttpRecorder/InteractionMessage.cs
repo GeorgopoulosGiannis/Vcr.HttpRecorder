@@ -9,7 +9,7 @@ namespace HttpRecorder
     /// </summary>
     public class InteractionMessage
     {
-        private HttpResponseMessage _response;
+        private readonly HttpResponseMessage _response;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="InteractionMessage"/> class.

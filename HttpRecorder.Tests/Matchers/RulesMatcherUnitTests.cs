@@ -231,7 +231,7 @@ namespace HttpRecorder.Tests.Matchers
                     new InteractionMessageTimings(DateTimeOffset.UtcNow, TimeSpan.MinValue))));
         }
 
-        private class Model
+        private class Model : IEquatable<Model>
         {
             public string Name { get; set; }
 

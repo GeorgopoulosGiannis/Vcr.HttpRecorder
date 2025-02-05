@@ -89,7 +89,7 @@ namespace HttpRecorder.Tests
             using var context = new HttpRecorderContext();
             var act = () =>
             {
-                var ctx2 = new HttpRecorderContext();
+                _ = new HttpRecorderContext();
             };
             act.Should().Throw<HttpRecorderException>().WithMessage("*multiple*");
         }

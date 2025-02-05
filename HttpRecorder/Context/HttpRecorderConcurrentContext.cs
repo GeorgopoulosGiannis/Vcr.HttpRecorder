@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Concurrent;
-using System.Diagnostics.CodeAnalysis;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Http;
@@ -46,7 +45,7 @@ namespace HttpRecorder.Context
             FilePath = filePath;
             LineNumber = lineNumber;
             Identifier = new HttpRecordedContextIdentifier(FilePath, testName);
-            
+
 
             if (!contexts.TryAdd(Identifier.Value, this))
             {
@@ -65,8 +64,9 @@ namespace HttpRecorder.Context
         {
             if (!contexts.TryGetValue(identifier.Value, out var context))
             {
-                throw new HttpRecorderException($"Could not find {nameof(HttpRecorderConcurrentContext)} for input identifier {identifier}." +
-                                                $"Make sure that {nameof(HttpRecorderServiceCollectionExtensions.AddHttpRecorderContextSupport)} has been called in the same function were the `using var ctx= {nameof(HttpRecorderContext)}` was called");
+                throw new HttpRecorderException(
+                    $"Could not find {nameof(HttpRecorderConcurrentContext)} for input identifier {identifier}." +
+                    $"Make sure that {nameof(HttpRecorderServiceCollectionExtensions.AddHttpRecorderContextSupport)} has been called in the same function were the `using var ctx= {nameof(HttpRecorderContext)}` was called");
             }
 
             return context;
@@ -75,7 +75,10 @@ namespace HttpRecorder.Context
         /// <summary>
         /// Gets the configuration factory.
         /// </summary>
-        public Func<IServiceProvider, HttpMessageHandlerBuilder, HttpRecorderConfiguration> ConfigurationFactory { get; }
+        public Func<IServiceProvider, HttpMessageHandlerBuilder, HttpRecorderConfiguration> ConfigurationFactory
+        {
+            get;
+        }
 
         /// <summary>
         /// Gets the TestName, which should be the <see cref="CallerMemberNameAttribute"/>.
@@ -99,9 +102,6 @@ namespace HttpRecorder.Context
         public HttpRecordedContextIdentifier Identifier { get; }
 
         /// <inheritdoc/>
-        [SuppressMessage("Design", "CA1063:Implement IDisposable Correctly", Justification = "Dispose pattern used for context here, not resource diposal.")]
-        [SuppressMessage("Usage", "CA1816:Dispose methods should call SuppressFinalize",
-            Justification = "Dispose pattern used for context here, not resource diposal.")]
         public void Dispose()
         {
             contexts.TryRemove(Identifier.Value, out _);

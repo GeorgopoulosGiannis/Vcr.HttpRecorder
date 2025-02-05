@@ -25,7 +25,7 @@ namespace HttpRecorder
         private readonly IInteractionRepository _repository;
         private readonly IInteractionAnonymizer _anonymizer;
         private readonly SemaphoreSlim _interactionLock = new SemaphoreSlim(1, 1);
-        private bool _disposed = false;
+        private readonly bool _disposed = false;
         private HttpRecorderMode? _executionMode;
         private Interaction _interaction;
 
@@ -92,7 +92,8 @@ namespace HttpRecorder
         }
 
         /// <inheritdoc />
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
+            CancellationToken cancellationToken)
         {
             if (request == null)
             {
@@ -120,7 +121,8 @@ namespace HttpRecorder
                     var interactionMessage = _matcher.Match(request, _interaction);
                     if (interactionMessage == null)
                     {
-                        throw new HttpRecorderException($"Unable to find a matching interaction for request {request.Method} {request.RequestUri}.");
+                        throw new HttpRecorderException(
+                            $"Unable to find a matching interaction for request {request.Method} {request.RequestUri}.");
                     }
 
                     return await PostProcessResponse(interactionMessage.Response);
@@ -132,12 +134,14 @@ namespace HttpRecorder
                 sw.Stop();
 
                 var newInteractionMessage = new InteractionMessage(
-                        innerResponse,
-                        new InteractionMessageTimings(start, sw.Elapsed));
+                    innerResponse,
+                    new InteractionMessageTimings(start, sw.Elapsed));
 
                 _interaction = new Interaction(
                     InteractionName,
-                    _interaction == null ? new[] { newInteractionMessage } : _interaction.Messages.Append(newInteractionMessage));
+                    _interaction == null
+                        ? new[] { newInteractionMessage }
+                        : _interaction.Messages.Append(newInteractionMessage));
 
                 _interaction = await _anonymizer.Anonymize(_interaction, cancellationToken);
                 _interaction = await _repository.StoreAsync(_interaction, cancellationToken);
@@ -162,7 +166,8 @@ namespace HttpRecorder
             if (!_executionMode.HasValue)
             {
                 var overridingEnvVarValue = Environment.GetEnvironmentVariable(OverridingEnvironmentVariableName);
-                if (!string.IsNullOrWhiteSpace(overridingEnvVarValue) && Enum.TryParse<HttpRecorderMode>(overridingEnvVarValue, out var parsedOverridingEnvVarValue))
+                if (!string.IsNullOrWhiteSpace(overridingEnvVarValue) &&
+                    Enum.TryParse<HttpRecorderMode>(overridingEnvVarValue, out var parsedOverridingEnvVarValue))
                 {
                     _executionMode = parsedOverridingEnvVarValue;
                     return;
@@ -187,7 +192,9 @@ namespace HttpRecorder
         /// </summary>
         /// <param name="response">The <see cref="HttpResponseMessage"/>.</param>
         /// <returns>The <see cref="HttpResponseMessage"/> returned as convenience.</returns>
-        private async Task<HttpResponseMessage> PostProcessResponse(HttpResponseMessage response)
+#pragma warning disable S2325
+        private Task<HttpResponseMessage> PostProcessResponse(HttpResponseMessage response)
+#pragma warning restore S2325
         {
             // Trick to make sure a fake ContentLength is not artificially added by the HttpClient if none was provided by the server.
             // Indeed, the ContentLength is _set_ in the _getter_, but explicitly setting a value opts out of this (undocumented) behaviour.
@@ -197,7 +204,7 @@ namespace HttpRecorder
                 response.Content.Headers.ContentLength = null;
             }
 
-            return response;
+            return Task.FromResult(response);
         }
     }
 }

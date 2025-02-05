@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FluentAssertions;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -34,7 +35,7 @@ namespace HttpRecorder.Tests
 
             var client = services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>().CreateClient("TheClient");
             var response = await client.GetAsync(ApiController.JsonUri);
-            response.EnsureSuccessStatusCode();
+            response.IsSuccessStatusCode.Should().BeTrue();
         }
 
         [Fact]
@@ -58,11 +59,11 @@ namespace HttpRecorder.Tests
                 });
 
             var response = await client.PostAsync(ApiController.FormDataUri, formContent);
-            response.EnsureSuccessStatusCode();
+            response.IsSuccessStatusCode.Should().BeTrue();
             response.Dispose();
 
             response = await client.PostAsync(ApiController.FormDataUri, formContent);
-            response.EnsureSuccessStatusCode();
+            response.IsSuccessStatusCode.Should().BeTrue();
         }
     }
 }

@@ -23,7 +23,7 @@ namespace HttpRecorder.Repositories
         /// <param name="cancellationToken">A cancellation token to cancel operation.</param>
         /// <returns>The loaded interaction.</returns>
         /// <exception cref="HttpRecorderException">If interactions cannot be loaded.</exception>
-        Task<Interaction> LoadAsync(string interactionName, CancellationToken cancellationToken);
+        Task<Interaction> LoadAsync(string interactionName, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Store the interaction.
@@ -31,6 +31,6 @@ namespace HttpRecorder.Repositories
         /// <param name="interaction">The <see cref="Interaction"/> to store.</param>
         /// <param name="cancellationToken">A cancellation token to cancel operation.</param>
         /// <returns>The persisted <see cref="Interaction"/>.</returns>
-        Task<Interaction> StoreAsync(Interaction interaction, CancellationToken cancellationToken);
+        Task<Interaction> StoreAsync(Interaction interaction, CancellationToken cancellationToken = default);
     }
 }

@@ -18,7 +18,8 @@ public class ConcurrentContextTests(ServerFixture fixture)
 
         using var context = new HttpRecorderConcurrentContext((_, _) => new HttpRecorderConfiguration
         {
-            Mode = HttpRecorderMode.Record, InteractionName = nameof(ItShouldThrowExceptionWhenContextIsRegisterUnderDifferentIdentifier),
+            Mode = HttpRecorderMode.Record,
+            InteractionName = nameof(ItShouldThrowExceptionWhenContextIsRegisterUnderDifferentIdentifier),
         });
         var act = () =>
         {
@@ -32,7 +33,7 @@ public class ConcurrentContextTests(ServerFixture fixture)
     {
         var test1Task = Test1();
         var test2Task = Test2();
-        await Task.WhenAll([test1Task, test2Task]);
+        await Task.WhenAll(test1Task, test2Task);
         (await test1Task).Should().BeTrue();
         (await test2Task).Should().BeTrue();
     }

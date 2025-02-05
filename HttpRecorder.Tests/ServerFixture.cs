@@ -12,7 +12,7 @@ namespace HttpRecorder.Tests
     /// xUnit collection fixture that starts an ASP.NET Core server listening to a random port.
     /// <seealso cref="ServerCollection" />.
     /// </summary>
-    public class ServerFixture : IDisposable
+    public sealed class ServerFixture : IDisposable
     {
         public ServerFixture()
         {

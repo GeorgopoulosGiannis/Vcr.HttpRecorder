@@ -10,7 +10,7 @@ namespace HttpRecorder.Repositories.HAR
         /// <summary>
         /// Initializes a new instance of the <see cref="Parameter"/> class.
         /// </summary>
-        public Parameter()
+        protected Parameter()
         {
         }
 
