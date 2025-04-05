@@ -207,25 +207,3 @@ You only have to export it using the HAR/HTTP Archive format. They can then be u
 
 Reading/writing the interaction can be customized by providing a custom `IInteractionRepository` implementation.
 
-## Changelog
-
-Please consult the [CHANGELOG](CHANGELOG.md) for more information about version
-history.
-
-## License
-
-This project is licensed under the Apache 2.0 license - see the
-[LICENSE](LICENSE) file for details.
-
-## Contributing
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on the process for
-contributing to this project.
-
-Be mindful of our [Code of Conduct](CODE_OF_CONDUCT.md).
-
-## Acknowledgments
-
-- https://github.com/vcr/vcr
-- https://github.com/nock/nock
-- https://github.com/mleech/scotch
