@@ -12,201 +12,128 @@ Interactions are recorded using the [HTTP Archive format standard](https://en.wi
 > 📝 **This is a maintained fork of the original [nventive/HttpRecorder](https://github.com/nventive/HttpRecorder)**.  
 > It includes bug fixes, support for modern .NET versions, and new features like concurrent context support.
 
-## Getting Started
+## Recommended Setup (ASP.NET Core Integration Testing)
 
-Install the package:
+If you're using WebApplicationFactory, this is the simplest and most powerful way to enable automatic recording and replaying across all HttpClients:
+
+```csharp
+[Fact]
+public async Task MyApiTest()
+{
+    using var context = new HttpRecorderConcurrentContext((_, _) => new HttpRecorderConfiguration
+    {
+        Mode = HttpRecorderMode.Auto, // Automatically records or replays
+    });
+
+    var client = webAppFactory.WithWebHostBuilder(builder =>
+    {
+        builder.ConfigureTestServices(services =>
+        {
+            services.AddHttpRecorderConcurrentContextSupport(); // Injects the handler globally
+        });
+    }).CreateClient();
+
+    var response = await client.GetAsync("/api/my-endpoint");
+
+    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+}
+```
+
+✅ No need to manually configure HttpClient
+
+✅ All HttpClients use the recorder automatically
+
+✅ .har files are stored per test method
+
+✅ Supports parallel test execution
+
+## Install via NuGet
 
 ```
 Install-Package HttpRecorder
 ```
 
-Here is an example of an integration tests using **HttpRecorder** (the `HttpRecorderDelegatingHandler`):
+## Using the Delegating Handler Manually
+
+If you want to apply HttpRecorder to a specific HttpClient only — without affecting the global DI container — you can use the delegating handler directly:
 
 ```csharp
-using System;
-using System.IO;
-using System.Net;
-using System.Net.Http;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
-using HttpRecorder;
-using Xunit;
+var interactionPath = "fixtures/test.har";
 
-namespace Sample
+var client = new HttpClient(new HttpRecorderDelegatingHandler(interactionPath)
 {
-    public class SampleIntegrationTests
-    {
-        [Fact]
-        public async Task ItShould()
-        {
-            // Initialize the HttpClient with the recorded file
-            // stored in a fixture repository.
-            var client = CreateHttpClient();
-
-            // Performs HttpClient operations.
-            // The interaction is recorded if there are no record,
-            // or replayed if there are
-            // (without actually hitting the target API).
-            // Fixture is recorded in the SampleIntegrationTestsFixtures\ItShould.har file.
-            var response = await client.GetAsync("api/user");
-
-            // Performs assertions.
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        }
-
-        private HttpClient CreateHttpClient(
-            [CallerMemberName] string testName = "",
-            [CallerFilePath] string filePath = "")
-        {
-            // The location of the file where the interaction is recorded.
-            // We use the C# CallerMemberName/CallerFilePath attributes to
-            // automatically set an appropriate path based on the test case.
-            var interactionFilePath = Path.Join(
-                Path.GetDirectoryName(filePath),
-                $"{Path.GetFileNameWithoutExtension(filePath)}Fixtures",
-                testName);
-
-            // Initialize the HttpClient with HttpRecorderDelegatingHandler, which
-            // records and replays the interactions.
-            // Do not forget to set the InnerHandler property.
-            return new HttpClient(
-                new HttpRecorderDelegatingHandler(interactionFilePath) { InnerHandler = new HttpClientHandler() })
-            {
-                BaseAddress = new Uri("https://reqres.in/"),
-            };
-        }
-    }
-}
+    InnerHandler = new HttpClientHandler()
+})
+{
+    BaseAddress = new Uri("https://reqres.in/")
+};
 ```
+
+This is useful if you need more granular control over which clients are recorded.
+
+📝 Tip: You can use CallerMemberName + CallerFilePath to automatically name har files per test.
 
 ## Features
 
-### Record mode
+#### Modes
 
-The  `HttpRecorderDelegatingHandler` can be run in different modes:
+ - `Auto` (default): Replay if cassette exists, otherwise record
 
-- Auto: Default mode - replay the interactions if the recording exists, otherwise record it.
-- Record: Always record the interaction, even if a record is present.
-- Replay: Always replay the interaction, throw if there is no recording.
-- Passthrough: Always passes the request/response down the line, without any interaction
+ - `Record`: Always record
 
-Just use the appropriate mode in the `HttpRecorderDelegatingHandler`  constructor.
+ - `Replay`: Always replay (throws if file is missing)
 
-The mode can also be overridden using the environment variable `HTTP_RECORDER_MODE`.
-If this is set to any valid `HttpRecorderMode` value, it will override the mode set in the code,
-except if this mode is `HttpRecorderMode.Passthrough`.
-This is useful when running in a CI environment and you want to make sure that no
-request goes out and all interactions are properly committed to the codebase.
+ - `Passthrough`: Bypass recorder, make real requests
 
-### Customize the matching behavior
+You can override the mode with the HTTP_RECORDER_MODE environment variable — useful in CI.
 
-By default, matching of the recorded requests is done by comparing the HTTP Method and complete Request URI. The first request that match is used and will not be returned again in the current run.
 
-If needed, the matching behavior can be customized using the `RulesMatcher`:
+## Matching Rules
+Use built-in matchers or create your own:
 
 ```csharp
-using HttpRecorder.Matchers;
-
-// Will match requests once in order, without comparing requests.
-var matcher = RulesMatcher.MatchOnce;
-
-// Will match requests once only by comparing HTTP methods.
-matcher = RulesMatcher.MatchOnce.ByHttpMethod();
-
-// Will match requests multiple times by comparing HTTP methods,
-// request uri (excluding the query string) and the X-API-Key header.
 matcher = RulesMatcher.MatchMultiple
     .ByHttpMethod()
     .ByRequestUri(UriPartial.Path)
     .ByHeader("X-API-Key");
-
-// Custom matching rule using the provided incoming request
-// and a recorded interaction message.
-matcher = RulesMatcher.MatchOnce.By((request, message) => ...);
-
-var client = new HttpClient(new HttpRecorderDelegatingHandler("...", matcher: matcher));
 ```
 
-Additional customization can be done by providing a custom `IRequestMatcher` implementation.
+## Anonymization
 
-### Anonymize the records
-
-Sometimes, there are portions of the requests / responses that you don't want recorded
-(e.g. because of API keys you do not want to commit to the source code repo...).
-
-In this case, you can use the `RulesInteractionAnonymizer` to perform the substitution.
+Mask sensitive fields before saving:
 
 ```csharp
-using HttpRecorder.Anonymizers;
-
 var anonymizer = RulesInteractionAnonymizer.Default
-    .AnonymizeRequestQueryStringParameter("queryStringParam")
-    .AnonymizeRequestHeader("requestHeader");
+    .AnonymizeRequestHeader("Authorization");
 
-var client = new HttpClient(new HttpRecorderDelegatingHandler("...", anonymizer: anonymizer));
 ```
 
-Additional customization can be done by providing a custom `IInteractionAnonymizer`
-implementation.
+## External HAR Support
+You can use .har files recorded with tools like:
 
-### HttpClientFactory
+ - Fiddler
 
-The component comes with extension methods for the HttpClientFactory:
+ - Chrome DevTools
 
-```csharp
-services
-    .AddHttpClient("TheClient")
-    .AddHttpRecorder(interactionName);
-```
+ - Postman
 
-### Recorder Context
+Just pass the file path into the handler.
 
-It is sometimes helpful to be able to decouple the injection of the `HttpRecorderDelegatingHandler`
-from the test case setup.
+Here is an example of an integration tests using **HttpRecorder** (the `HttpRecorderDelegatingHandler`):
 
-This is especially useful in the context of ASP.NET Core Integration tests.
 
-It is possible to add the `HttpRecorderDelegatingHandler` globally to all `HttpClient` instances managed by the `IHttpClientFactory`,
-and then customize the recording in the test case by using the `HttpRecorderContext`.
+## Custom Storage
+You can override how and where interactions are stored via `IInteractionRepository`.
 
-#### Concurrent Recorder Context
 
-By default, `HttpRecorderContext` does not support concurrent execution of different test cases. To enable concurrent execution, use `HttpRecorderConcurrentContext` and `AddHttpRecorderConcurrentContextSupport`.
+## Compared to WireMock
 
-```csharp
-// When registering the services, do the following:
-services.AddHttpRecorderConcurrentContextSupport();
-// This can be done in the ConfigureWebHost method of the WebApplicationFactory for example.
-// It will inject the HttpRecorderDelegatingHandler in all HttpClients.
 
-// Additional configuration per HttpClient can be set up as well:
-[Fact]
-public async Task ItShould()
-{
-    using var context = new HttpRecorderConcurrentContext((_, _) => new HttpRecorderConfiguration
-        {
-            Mode = HttpRecorderMode.Auto,
-        });
-    
-    var client = webAppFactory.WithWebHostBuilder(x =>
-        {
-            x.ConfigureTestServices(s =>
-            {
-                services.AddHttpRecorderConcurrentContextSupport();            
-            });
-        }).CreateClient();
+WireMock is a powerful tool, but sometimes it's more than you need — especially for simple, deterministic testing of external API calls.
 
-    // .. Perform test case.
-}
-```
-
-### Record interaction in external tools
-
-Interaction files can be recorded using your favorite tool (e.g. [Fiddler](https://www.telerik.com/fiddler), Google Chrome Inspector, ...).
-
-You only have to export it using the HAR/HTTP Archive format. They can then be used as-is as a test fixture that will be loaded by the `HttpRecorderDelegatingHandler`.
-
-### Customize the storage
-
-Reading/writing the interaction can be customized by providing a custom `IInteractionRepository` implementation.
-
+| Feature                         | WireMock              | Vcr.HttpRecorder            |
+|---------------------------------|------------------------|-----------------------------|
+| Requires mock server            | ✅                     | ❌                          |
+| Requires hand-written stubs     | ✅                     | ❌ (records real responses) |
+| Easily test external API logic  | ⚠️ manual setup needed | ✅ out of the box           |
+| Works with WebApplicationFactory | ⚠️ extra wiring        | ✅ built-in support         |
