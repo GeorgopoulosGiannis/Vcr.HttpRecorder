@@ -89,14 +89,54 @@ You can override the mode with the HTTP_RECORDER_MODE environment variable — u
 
 
 ## Matching Rules
-Use built-in matchers or create your own:
+
+When replaying, HttpRecorder uses a rule-based matcher to determine which recorded response to return for a given request.
+
+By default, if you don’t configure a matcher, it behaves exactly as if you had written:
+
+
+```csharp
+matcher = RulesMatcher.MatchOnce
+    .ByHttpMethod()
+    .ByRequestUri(UriPartial.Path);
+```
+This means:
+
+Requests are matched by HTTP method and the path part of the URI
+
+Each recorded request is used once and in order
+
+If your test sends two identical requests, both must have been recorded
+
+If there are not enough matching requests in the .har file during replay, the test will fail.
+
+## Custom Matchers
+
+You can customize the matching logic to match multiple times or add more rules — for example:
 
 ```csharp
 matcher = RulesMatcher.MatchMultiple
     .ByHttpMethod()
     .ByRequestUri(UriPartial.Path)
-    .ByHeader("X-API-Key");
+    .ByHeader("Authorization");
 ```
+
+```csharp
+matcher = RulesMatcher.MatchOnce
+    .ByHttpMethod()
+    .ByRequestUri(UriPartial.Path)
+    .ByContent(); // matches by binary content
+```
+
+You can also match by deserialized JSON:
+
+```csharp
+matcher = RulesMatcher.MatchOnce
+    .ByHttpMethod()
+    .ByJsonContent<MyRequestDto>();
+```
+
+> 📝 If none of the built-in rules suit your needs, you can implement a custom IRequestMatcher.
 
 ## Anonymization
 
