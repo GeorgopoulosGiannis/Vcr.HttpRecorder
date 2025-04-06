@@ -1,4 +1,4 @@
-# HttpRecorder
+# Vcr.HttpRecorder
 
 .NET HttpClient integration tests made easy.
 
