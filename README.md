@@ -12,6 +12,24 @@ Interactions are recorded using the [HTTP Archive format standard](https://en.wi
 > 📝 **This is a maintained fork of the original [nventive/HttpRecorder](https://github.com/nventive/HttpRecorder)**.  
 > It includes bug fixes, support for modern .NET versions, and new features like concurrent context support.
 
+<details>
+  <summary>📚 Table of Contents</summary>
+
+- [Recommended Setup (ASP.NET Core)](#recommended-setup-aspnet-core-integration-testing)
+- [Install via NuGet](#install-via-nuget)
+- [Manual Setup with Delegating Handler](#using-the-delegating-handler-manually)
+- [Features](#features)
+  - [Modes](#modes)
+  - [Matching Behavior](#matching-behavior)
+  - [Custom Matchers](#custom-matchers)
+  - [Anonymization](#anonymization)
+  - [External HAR Support](#external-har-support)
+  - [Custom Storage](#custom-storage)
+- [Compared to WireMock](#compared-to-wiremock)
+
+</details>
+
+
 ## Recommended Setup (ASP.NET Core Integration Testing)
 
 If you're using WebApplicationFactory, this is the simplest and most powerful way to enable automatic recording and replaying across all HttpClients:
@@ -88,7 +106,7 @@ This is useful if you need more granular control over which clients are recorded
 You can override the mode with the HTTP_RECORDER_MODE environment variable — useful in CI.
 
 
-## Matching Rules
+#### Matching Behavior
 
 When replaying, HttpRecorder uses a rule-based matcher to determine which recorded response to return for a given request.
 
@@ -138,7 +156,7 @@ matcher = RulesMatcher.MatchOnce
 
 > 📝 If none of the built-in rules suit your needs, you can implement a custom IRequestMatcher.
 
-## Anonymization
+#### Anonymization
 
 Mask sensitive fields before saving:
 
@@ -148,7 +166,7 @@ var anonymizer = RulesInteractionAnonymizer.Default
 
 ```
 
-## External HAR Support
+#### External HAR Support
 You can use .har files recorded with tools like:
 
  - Fiddler
@@ -162,7 +180,7 @@ Just pass the file path into the handler.
 Here is an example of an integration tests using **HttpRecorder** (the `HttpRecorderDelegatingHandler`):
 
 
-## Custom Storage
+#### Custom Storage
 You can override how and where interactions are stored via `IInteractionRepository`.
 
 
