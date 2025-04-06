@@ -177,8 +177,6 @@ You can use .har files recorded with tools like:
 
 Just pass the file path into the handler.
 
-Here is an example of an integration tests using **HttpRecorder** (the `HttpRecorderDelegatingHandler`):
-
 
 #### Custom Storage
 You can override how and where interactions are stored via `IInteractionRepository`.
