@@ -2,13 +2,8 @@ name: Push package to Nuget.org
 on:
   workflow_dispatch: # Allow running the workflow manually from the GitHub UI
   push:
-env:
-  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
-  DOTNET_NOLOGO: true
-
-defaults:
-  run:
-    shell: pwsh
+    paths:
+      - 'Vcr.HttpRecorder/**'
 
 jobs:
   create_nuget:
