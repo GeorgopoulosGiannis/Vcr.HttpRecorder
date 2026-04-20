@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net;
 using System.Net.Http;
+using System.Text.Json.Serialization;
 
 namespace Vcr.HttpRecorder.Repositories.HAR
 {
@@ -71,10 +72,7 @@ namespace Vcr.HttpRecorder.Repositories.HAR
         /// <summary>
         /// Gets or sets the redirection target URL from the Location response header.
         /// </summary>
-        /// <remarks>
-        /// This property must have the <c>URL</c> part in uppercase to observe the <a href="https://w3c.github.io/web-performance/specs/HAR/Overview.html">HAR specification</a>.
-        /// Renaming this property to <c>RedirectUrl</c> could break tools implementing the HAR specification.
-        /// </remarks>
+        [JsonPropertyName("redirectURL")]
         public string RedirectUrl { get; set; } = string.Empty;
 
         /// <summary>
