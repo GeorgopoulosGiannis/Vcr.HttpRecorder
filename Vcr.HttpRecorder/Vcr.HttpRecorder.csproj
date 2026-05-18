@@ -9,6 +9,7 @@
         <PackageId>$(AssemblyName)</PackageId>
         <RootNamespace>Vcr.HttpRecorder</RootNamespace>
         <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageIcon>cassette-http-recorder.png</PackageIcon>
     </PropertyGroup>
 
     <ItemGroup>
@@ -18,5 +19,6 @@
     </ItemGroup>
     <ItemGroup>
         <None Include="../README.md" Pack="true" PackagePath="\"/>
+        <None Include="../cassette-http-recorder.png" Pack="true" PackagePath="\"/>
     </ItemGroup>
 </Project>
