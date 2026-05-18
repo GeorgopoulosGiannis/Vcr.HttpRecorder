@@ -1,5 +1,4 @@
 <Project>
-    <!-- Common properties for all projects -->
     <PropertyGroup>
         <Authors>GiannisGeorgopoulos</Authors>
         <Description>Fork of https://github.com/nventive/HttpRecorder</Description>
