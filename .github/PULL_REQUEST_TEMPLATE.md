@@ -30,7 +30,6 @@ Please check if your PR fulfills the following requirements:
 - [ ] Documentation has been added/updated
 - [ ] Automated Unit / Integration tests for the changes have been added/updated
 - [ ] Contains **NO** breaking changes
-- [ ] Updated the Changelog
 - [ ] Associated with an issue
 
 <!-- If this PR contains a breaking change, please describe the impact
