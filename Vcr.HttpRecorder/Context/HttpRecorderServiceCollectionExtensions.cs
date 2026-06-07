@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Http;
-using System.Runtime.CompilerServices;
 
 namespace Vcr.HttpRecorder.Context
 {
@@ -24,20 +23,17 @@ namespace Vcr.HttpRecorder.Context
 
 
         /// <summary>
-        /// Enables support for concurrent use of <see cref="HttpRecorderContext"/> in different tests. 
+        /// Enables support for concurrent use of <see cref="HttpRecorderConcurrentContext"/> in different tests. 
+        /// This method should be called once during service collection configuration (e.g., in `WebApplicationFactory.ConfigureServices`).
+        /// The individual test cases will then use `using var context = new HttpRecorderConcurrentContext();`
+        /// to activate the context for their asynchronous flow.
         /// </summary>
         /// <param name="services">The <see cref="IServiceCollection"/>.</param>
-        /// <param name="testName">The <see cref="CallerMemberNameAttribute"/>.</param>
-        /// <param name="filePath">The <see cref="CallerFilePathAttribute"/>.</param>
         /// <returns>The updated <see cref="IServiceCollection"/>.</returns>
-        public static IServiceCollection AddHttpRecorderConcurrentContextSupport(this IServiceCollection services,
-            [CallerMemberName] string testName = "",
-            [CallerFilePath] string filePath = "")
+        public static IServiceCollection AddHttpRecorderConcurrentContextSupport(this IServiceCollection services)
         {
-            var identifier = new HttpRecordedContextIdentifier(filePath, testName);
             services.TryAddEnumerable(
-                ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, RecorderConcurrentHttpMessageHandlerBuilderFilter>(provider =>
-                    new RecorderConcurrentHttpMessageHandlerBuilderFilter(provider, identifier)));
+                ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, RecorderConcurrentHttpMessageHandlerBuilderFilter>());
 
             return services;
         }

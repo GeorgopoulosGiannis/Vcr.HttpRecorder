@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Http;
 using System;
-using System.Collections.Concurrent;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Vcr.HttpRecorder.Context
 {
@@ -11,11 +11,10 @@ namespace Vcr.HttpRecorder.Context
     /// </summary>
     public sealed class HttpRecorderConcurrentContext : IDisposable
     {
-        private static readonly ConcurrentDictionary<string, HttpRecorderConcurrentContext> contexts
-            = new ConcurrentDictionary<string, HttpRecorderConcurrentContext>();
+        private static readonly AsyncLocal<HttpRecorderConcurrentContext> _currentContext = new AsyncLocal<HttpRecorderConcurrentContext>();
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="HttpRecorderContext"/> class.
+        /// Initializes a new instance of the <see cref="HttpRecorderConcurrentContext"/> class.
         /// </summary>
         /// <param name="configurationFactory">Factory to allow customization per <see cref="HttpClient"/>.</param>
         /// <param name="testName">The <see cref="CallerMemberNameAttribute"/>.</param>
@@ -23,17 +22,13 @@ namespace Vcr.HttpRecorder.Context
         /// <param name="lineNumber"></param>
         /// <example>
         /// <![CDATA[
-        /// // In service registration.
-        /// services.AddConcurrentHttpRecorderContextSupport();
+        /// // In service registration (e.g., WebApplicationFactory.ConfigureServices).
+        /// services.AddHttpRecorderConcurrentContextSupport();
         /// 
         /// // In the test case.
         /// using var context = new HttpRecorderConcurrentContext();
         /// ]]>
         /// </example>
-        /// <remarks>
-        /// `services.AddConcurrentHttpRecorderContextSupport();` and `using var context = new HttpRecorderConcurrentContext();`
-        /// should be placed under the same test method
-        /// </remarks>
         public HttpRecorderConcurrentContext(
             Func<IServiceProvider, HttpMessageHandlerBuilder, HttpRecorderConfiguration> configurationFactory = null,
             [CallerMemberName] string testName = "",
@@ -44,33 +39,25 @@ namespace Vcr.HttpRecorder.Context
             TestName = testName;
             FilePath = filePath;
             LineNumber = lineNumber;
-            Identifier = new HttpRecordedContextIdentifier(FilePath, testName);
+            Identifier = new HttpRecordedContextIdentifier(FilePath, testName); // Still useful for debugging, but not for matching HttpClient.
 
-
-            if (!contexts.TryAdd(Identifier.Value, this))
+            if (_currentContext.Value != null)
             {
                 throw new HttpRecorderException(
-                    $"Cannot use multiple {nameof(HttpRecorderContext)} for the same identifier: {Identifier} at the same time. Previous usage line number: {LineNumber}, current usage line number: {lineNumber}.");
+                    $"Cannot use multiple {nameof(HttpRecorderConcurrentContext)} in the same asynchronous flow. " +
+                    $"Previous context created at {(_currentContext.Value.FilePath, _currentContext.Value.TestName, _currentContext.Value.LineNumber)}, " +
+                    $"current context creation at {(FilePath, TestName, LineNumber)}.");
             }
+
+            _currentContext.Value = this;
         }
 
         /// <summary>
-        /// Retrieves the <see cref="HttpRecorderConcurrentContext"/> with the associated <see cref="Identifier"/>
+        /// Gets the currently active <see cref="HttpRecorderConcurrentContext"/> for the current asynchronous flow.
+        /// Returns null if no context is active.
         /// </summary>
-        /// <param name="identifier"></param>
-        /// <returns></returns>
-        /// <exception cref="HttpRecorderException"></exception>
-        public static HttpRecorderConcurrentContext GetContext(HttpRecordedContextIdentifier identifier)
-        {
-            if (!contexts.TryGetValue(identifier.Value, out var context))
-            {
-                throw new HttpRecorderException(
-                    $"Could not find {nameof(HttpRecorderConcurrentContext)} for input identifier {identifier}." +
-                    $"Make sure that {nameof(HttpRecorderServiceCollectionExtensions.AddHttpRecorderContextSupport)} has been called in the same function were the `using var ctx= {nameof(HttpRecorderContext)}` was called");
-            }
+        public static HttpRecorderConcurrentContext Current => _currentContext.Value;
 
-            return context;
-        }
 
         /// <summary>
         /// Gets the configuration factory.
@@ -97,6 +84,7 @@ namespace Vcr.HttpRecorder.Context
 
         /// <summary>
         /// Gets the identifier for the context, which should be the <see cref="FilePath"/> combined with the <see cref="TestName"/>.
+        /// This identifier is primarily used for debugging and logging purposes, not for matching HttpClients.
         /// <example>{FilePath}.{TestName}</example>
         /// </summary>
         public HttpRecordedContextIdentifier Identifier { get; }
@@ -104,7 +92,7 @@ namespace Vcr.HttpRecorder.Context
         /// <inheritdoc/>
         public void Dispose()
         {
-            contexts.TryRemove(Identifier.Value, out _);
+            _currentContext.Value = null;
         }
     }
 }

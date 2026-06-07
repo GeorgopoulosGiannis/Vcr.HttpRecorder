@@ -1,9 +1,12 @@
-using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using System;
 using System.Linq;
 using System.Text;
+using Vcr.HttpRecorder.Context; // Added for AddHttpRecorderConcurrentContextSupport
 using Vcr.HttpRecorder.Tests.Server;
 
 namespace Vcr.HttpRecorder.Tests
@@ -17,32 +20,36 @@ namespace Vcr.HttpRecorder.Tests
         public ServerFixture()
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-            ServerWebHost = WebHost
-                .CreateDefaultBuilder()
-                .UseKestrel()
-                .UseStartup<Startup>()
-                .UseUrls("http://127.0.0.1:0")
+
+            // Use Host.CreateDefaultBuilder() with ConfigureWebHostDefaults() - the recommended way in .NET 10
+            ServerHost = Host.CreateDefaultBuilder()
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    webBuilder.UseKestrel()
+                              .UseStartup<Startup>()
+                              .ConfigureServices(services => services.AddHttpRecorderConcurrentContextSupport())
+                              .UseUrls("http://127.0.0.1:0");
+                })
                 .Build();
-            ServerWebHost.Start();
+
+            ServerHost.Start();
         }
 
-        public IWebHost ServerWebHost { get; }
+        public IHost ServerHost { get; }
 
         public Uri ServerUri
         {
             get
             {
-                var serverAddressesFeature = ServerWebHost.ServerFeatures.Get<IServerAddressesFeature>();
+                var server = ServerHost.Services.GetRequiredService<IServer>();
+                var serverAddressesFeature = server.Features.Get<IServerAddressesFeature>();
                 return new Uri(serverAddressesFeature.Addresses.First());
             }
         }
 
         public void Dispose()
         {
-            if (ServerWebHost != null)
-            {
-                ServerWebHost.Dispose();
-            }
+            ServerHost?.Dispose();
         }
     }
 }

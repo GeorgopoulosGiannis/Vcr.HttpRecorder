@@ -4,8 +4,7 @@ using System.IO;
 namespace Vcr.HttpRecorder.Context
 {
     /// <summary>
-    /// A utility class that wraps identifiers for retrieving <see cref="HttpRecorderConcurrentContext"/> from
-    /// <see cref="HttpRecorderConcurrentContext.GetContext"/>
+    /// A utility class that wraps identifiers for an <see cref="HttpRecorderConcurrentContext"/>.
     /// </summary>
     public sealed class HttpRecordedContextIdentifier : IEquatable<HttpRecordedContextIdentifier>
     {

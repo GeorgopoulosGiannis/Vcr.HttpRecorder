@@ -1,6 +1,8 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.Net.Http;
+using System.Net.Http.Json;
 using System.Threading.Tasks;
 using Vcr.HttpRecorder.Context;
 using Vcr.HttpRecorder.Tests.Server;
@@ -12,83 +14,68 @@ namespace Vcr.HttpRecorder.Tests;
 public class ConcurrentContextTests(ServerFixture fixture)
 {
     [Fact]
-    public void ItShouldThrowExceptionWhenContextIsRegisterUnderDifferentIdentifier()
+    public async Task ItShouldWorkWithMultipleContextsUnderDifferentTests()
     {
-        var serviceCollection = CreateServiceCollection();
+        var execution1 = ExecuteModeIterations("execution1", async (client, mode) =>
+        {
+            var response = await client.GetFromJsonAsync<SampleModel>($"{ApiController.JsonUri}?name=11");
 
-        using var context = new HttpRecorderConcurrentContext((_, _) => new HttpRecorderConfiguration
-        {
-            Mode = HttpRecorderMode.Record,
-            InteractionName = nameof(ItShouldThrowExceptionWhenContextIsRegisterUnderDifferentIdentifier),
+            response.Name.Should().Be("11");
         });
-        var act = () =>
+        var execution2 = ExecuteModeIterations("execution2", async (client, mode) =>
         {
-            serviceCollection.BuildServiceProvider().GetRequiredService<IHttpClientFactory>().CreateClient("TheClient");
-        };
-        act.Should().Throw<HttpRecorderException>().WithMessage("*Could not find*");
+            var response = await client.GetFromJsonAsync<SampleModel>($"{ApiController.JsonUri}?name=12");
+            response.Name.Should().Be("12");
+        });
+        await Task.WhenAll(execution1, execution2);
     }
 
     [Fact]
-    public async Task ItShouldWorkWithMultipleContextsUnderDifferentTests()
+    public void ItShouldClearContextOnDispose()
     {
-        var test1Task = Test1();
-        var test2Task = Test2();
-        await Task.WhenAll(test1Task, test2Task);
-        (await test1Task).Should().BeTrue();
-        (await test2Task).Should().BeTrue();
-    }
-
-    private ServiceCollection CreateServiceCollection()
-    {
-        var services = new ServiceCollection();
-        services
-            .AddHttpRecorderConcurrentContextSupport()
-            .AddHttpClient(
-                "TheClient",
-                options =>
-                {
-                    options.BaseAddress = fixture.ServerUri;
-                });
-        return services;
-    }
-
-    private async Task<bool> Test1()
-    {
-        var services = new ServiceCollection();
-        services
-            .AddHttpRecorderConcurrentContextSupport()
-            .AddHttpClient(
-                "TheClient",
-                options =>
-                {
-                    options.BaseAddress = fixture.ServerUri;
-                });
-
-        using var context = new HttpRecorderConcurrentContext((_, _) =>
-            new HttpRecorderConfiguration { Mode = HttpRecorderMode.Record, InteractionName = nameof(Test1) });
-        var client = services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>().CreateClient("TheClient");
-        var passthroughResponse = await client.GetAsync(ApiController.JsonUri);
-        return passthroughResponse.IsSuccessStatusCode;
-    }
-
-    private async Task<bool> Test2()
-    {
-        var services = new ServiceCollection();
-        services
-            .AddHttpRecorderConcurrentContextSupport()
-            .AddHttpClient(
-                "TheClient",
-                options =>
-                {
-                    options.BaseAddress = fixture.ServerUri;
-                });
-
-        using var context = new HttpRecorderConcurrentContext((_, _) => new HttpRecorderConfiguration
+        // Act & Assert
+        using (new HttpRecorderConcurrentContext())
         {
-            Mode = HttpRecorderMode.Record, InteractionName = nameof(Test2),
-        });
-        var client = services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>().CreateClient("TheClient");
-        var passthroughResponse = await client.GetAsync(ApiController.JsonUri);
-        return passthroughResponse.IsSuccessStatusCode;
+            HttpRecorderConcurrentContext.Current.Should().NotBeNull();
+        }
+
+        // After dispose, Current should be null
+        var current = HttpRecorderConcurrentContext.Current;
+        current.Should().BeNull();
+    }
+
+    private async Task ExecuteModeIterations(string testName, Func<HttpClient, HttpRecorderMode, Task> test)
+    {
+        var modes = new[]
+        {
+            HttpRecorderMode.Passthrough, HttpRecorderMode.Record, HttpRecorderMode.Replay, HttpRecorderMode.Auto,
+        };
+
+        foreach (var mode in modes)
+        {
+            var services = new ServiceCollection();
+            services
+                .AddHttpRecorderConcurrentContextSupport()
+                .AddHttpClient(
+                    "TestClient",
+                    options =>
+                    {
+                        options.BaseAddress = fixture.ServerUri;
+                    });
+
+            using var context = new HttpRecorderConcurrentContext((_, _) =>
+                new HttpRecorderConfiguration
+                {
+                    Mode = mode,
+                    InteractionName = testName,
+                });
+
+            var client = services
+                .BuildServiceProvider()
+                .GetRequiredService<IHttpClientFactory>()
+                .CreateClient("TestClient");
+
+            await test(client, mode);
+        }
     }
 }
