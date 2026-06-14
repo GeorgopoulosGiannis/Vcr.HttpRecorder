@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc.Testing;
-using System.Net.Http;
 using Vcr.HttpRecorder.Context;
 
 namespace Vcr.HttpRecorder.AspNetCore
