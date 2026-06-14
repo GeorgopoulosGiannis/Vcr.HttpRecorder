@@ -1,32 +1,35 @@
-public static HttpClient CreateRecorderClient<TEntryPoint>(
-    this WebApplicationFactory<TEntryPoint> factory,
-    WebApplicationFactoryClientOptions? options = null)
-    where TEntryPoint : class
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Mvc.Testing.Handlers;
+using Vcr.HttpRecorder.Context;
+
+namespace Vcr.HttpRecorder.AspNetCore;
+
+public static class WebApplicationFactoryRecorderExtensions
 {
-    var handler = new HttpRecorderPropagationHandler
+    public static HttpClient CreateRecorderClient<TEntryPoint>(
+        this WebApplicationFactory<TEntryPoint> factory,
+        WebApplicationFactoryClientOptions? options = null)
+        where TEntryPoint : class
     {
-        InnerHandler = factory.Server.CreateHandler()
-    };
+        var handler = new HttpRecorderPropagationHandler { InnerHandler = factory.Server.CreateHandler() };
 
-    if (options == null)
-    {
-        return new HttpClient(handler)
+        if (options == null)
         {
-            BaseAddress = factory.Server.BaseAddress
-        };
+            return new HttpClient(handler) { BaseAddress = factory.Server.BaseAddress };
+        }
+
+        var handlers = new List<DelegatingHandler> { handler };
+
+        if (options.AllowAutoRedirect)
+        {
+            handlers.Add(new RedirectHandler(options.MaxAutomaticRedirections));
+        }
+
+        if (options.HandleCookies)
+        {
+            handlers.Add(new CookieContainerHandler());
+        }
+
+        return factory.CreateDefaultClient(options.BaseAddress, handlers.ToArray());
     }
-
-    var handlers = new List<DelegatingHandler> { handler };
-
-    if (options.AllowAutoRedirect)
-    {
-        handlers.Add(new RedirectHandler(options.MaxAutomaticRedirections));
-    }
-
-    if (options.HandleCookies)
-    {
-        handlers.Add(new CookieContainerHandler());
-    }
-
-    return factory.CreateDefaultClient(options.BaseAddress, handlers.ToArray());
 }
