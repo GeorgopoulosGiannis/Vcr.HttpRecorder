@@ -1,7 +1,5 @@
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Vcr.HttpRecorder;
-using Vcr.HttpRecorder.AspNetCore;
 using Vcr.HttpRecorder.Context;
 using Xunit;
 
