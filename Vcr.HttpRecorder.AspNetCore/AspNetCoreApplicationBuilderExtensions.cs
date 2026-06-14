@@ -11,10 +11,10 @@ namespace Vcr.HttpRecorder.AspNetCore
         /// <summary>
         /// Adds the <see cref="HttpRecorderContextRestorerMiddleware"/> to the ASP.NET Core pipeline.
         /// This middleware restores the <see cref="HttpRecorderPropagationHandler"/> from the propagation header
-        /// set by <see param="app"/>.
+        /// set by <paramref name="app"/>.
         /// </summary>
         /// <param name="app">The <see cref="IApplicationBuilder"/>.</param>
-        /// <returns>The <see cref="HttpRecorderConcurrentContext"/> for chaining.</returns>
+        /// <returns>The <see cref="IApplicationBuilder"/> for chaining.</returns>
         public static IApplicationBuilder UseHttpRecorderContextRestorer(this IApplicationBuilder app)
         {
             return app.UseMiddleware<HttpRecorderContextRestorerMiddleware>();
