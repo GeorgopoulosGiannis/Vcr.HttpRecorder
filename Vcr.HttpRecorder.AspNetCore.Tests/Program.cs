@@ -9,4 +9,4 @@ var app = builder.Build();
 
 app.MapGet("/test", () => "Hello from test server");
 
-app.Run();
+await app.RunAsync();
