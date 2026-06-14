@@ -35,8 +35,7 @@ namespace Vcr.HttpRecorder.Context
             services.TryAddEnumerable(
                 ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, RecorderConcurrentHttpMessageHandlerBuilderFilter>());
 
-            // Register the middleware that restores the context on the server side
-            services.AddTransient<HttpRecorderContextRestorerMiddleware>();
+            // Middleware registration removed – it belongs to Vcr.HttpRecorder.AspNetCore.
 
             return services;
         }
