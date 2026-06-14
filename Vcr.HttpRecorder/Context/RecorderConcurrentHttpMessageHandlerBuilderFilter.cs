@@ -1,12 +1,11 @@
 using Microsoft.Extensions.Http;
 using System;
-using System.IO;
 
 namespace Vcr.HttpRecorder.Context
 {
     /// <summary>
-    /// <see cref="IHttpMessageHandlerBuilderFilter"/> that adds <see cref="HttpRecorderDelegatingHandler"/>
-    /// based on the value of the <see cref="HttpRecorderConcurrentContext.Current"/>.
+    /// <see cref="IHttpMessageHandlerBuilderFilter"/> that adds <see cref="HttpRecorderPropagationHandler"/>
+    /// to inject the current <see cref="HttpRecorderConcurrentContext"/> as a header on outgoing requests.
     /// </summary>
     public class RecorderConcurrentHttpMessageHandlerBuilderFilter : IHttpMessageHandlerBuilderFilter
     {
@@ -25,34 +24,8 @@ namespace Vcr.HttpRecorder.Context
                 // Run other configuration first, we want to decorate.
                 next(builder);
 
-                var context = HttpRecorderConcurrentContext.Current;
-
-                if (context is null)
-                {
-                    return;
-                }
-
-                var config = context.ConfigurationFactory?.Invoke(builder.Services, builder) ?? new HttpRecorderConfiguration();
-
-                if (config.Enabled)
-                {
-                    var interactionName = config.InteractionName;
-                    if (string.IsNullOrEmpty(interactionName))
-                    {
-                        interactionName = Path.Combine(
-                            Path.GetDirectoryName(context.FilePath) ?? string.Empty,
-                            $"{Path.GetFileNameWithoutExtension(context.FilePath)}Fixtures",
-                            context.TestName,
-                            builder.Name ?? string.Empty);
-                    }
-
-                    builder.AdditionalHandlers.Add(new HttpRecorderDelegatingHandler(
-                        interactionName,
-                        mode: config.Mode,
-                        matcher: config.Matcher,
-                        repository: config.Repository,
-                        anonymizer: config.Anonymizer));
-                }
+                // Add the propagation handler to inject context ID as a header
+                builder.AdditionalHandlers.Add(new HttpRecorderPropagationHandler());
             };
         }
     }

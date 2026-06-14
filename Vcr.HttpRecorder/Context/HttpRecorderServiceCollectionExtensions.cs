@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Http;
 
@@ -34,6 +34,9 @@ namespace Vcr.HttpRecorder.Context
         {
             services.TryAddEnumerable(
                 ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, RecorderConcurrentHttpMessageHandlerBuilderFilter>());
+
+            // Register the middleware that restores the context on the server side
+            services.AddTransient<HttpRecorderContextRestorerMiddleware>();
 
             return services;
         }

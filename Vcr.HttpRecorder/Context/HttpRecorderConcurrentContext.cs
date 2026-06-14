@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Http;
 using System;
+using System.Collections.Concurrent;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -12,6 +13,10 @@ namespace Vcr.HttpRecorder.Context
     public sealed class HttpRecorderConcurrentContext : IDisposable
     {
         private static readonly AsyncLocal<HttpRecorderConcurrentContext> _currentContext = new AsyncLocal<HttpRecorderConcurrentContext>();
+        private static readonly ConcurrentDictionary<string, HttpRecorderConcurrentContext> _activeContexts = new ConcurrentDictionary<string, HttpRecorderConcurrentContext>();
+
+        private readonly string _contextId;
+        private bool _disposed;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="HttpRecorderConcurrentContext"/> class.
@@ -35,6 +40,7 @@ namespace Vcr.HttpRecorder.Context
             [CallerFilePath] string filePath = "",
             [CallerLineNumber] int lineNumber = 0)
         {
+            _contextId = Guid.NewGuid().ToString("N");
             ConfigurationFactory = configurationFactory;
             TestName = testName;
             FilePath = filePath;
@@ -50,7 +56,13 @@ namespace Vcr.HttpRecorder.Context
             }
 
             _currentContext.Value = this;
+            _activeContexts.TryAdd(_contextId, this);
         }
+
+        /// <summary>
+        /// Gets the unique identifier for this context instance.
+        /// </summary>
+        public string ContextId => _contextId;
 
         /// <summary>
         /// Gets the currently active <see cref="HttpRecorderConcurrentContext"/> for the current asynchronous flow.
@@ -58,6 +70,17 @@ namespace Vcr.HttpRecorder.Context
         /// </summary>
         public static HttpRecorderConcurrentContext Current => _currentContext.Value;
 
+        /// <summary>
+        /// Retrieves an active context by its <see cref="ContextId"/>.
+        /// Returns null if no context with that ID is currently active.
+        /// </summary>
+        /// <param name="contextId">The context identifier.</param>
+        /// <returns>The matching <see cref="HttpRecorderConcurrentContext"/> or null.</returns>
+        public static HttpRecorderConcurrentContext GetContextById(string contextId)
+        {
+            _activeContexts.TryGetValue(contextId, out var context);
+            return context;
+        }
 
         /// <summary>
         /// Gets the configuration factory.
@@ -92,7 +115,12 @@ namespace Vcr.HttpRecorder.Context
         /// <inheritdoc/>
         public void Dispose()
         {
-            _currentContext.Value = null;
+            if (!_disposed)
+            {
+                _disposed = true;
+                _currentContext.Value = null;
+                _activeContexts.TryRemove(_contextId, out _);
+            }
         }
     }
 }
