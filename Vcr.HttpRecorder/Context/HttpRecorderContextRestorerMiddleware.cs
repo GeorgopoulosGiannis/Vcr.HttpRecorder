@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Http;
 using System.Threading.Tasks;
 
 namespace Vcr.HttpRecorder.Context
