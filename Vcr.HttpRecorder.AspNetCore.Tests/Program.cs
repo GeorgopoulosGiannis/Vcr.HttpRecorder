@@ -1,12 +1,22 @@
+using Vcr.HttpRecorder.AspNetCore;
 using Vcr.HttpRecorder.Context;
 
-var builder = WebApplication.CreateBuilder(args);
+public class Program
+{
+    public static void Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
 
-// Register the concurrent context support
-builder.Services.AddHttpRecorderConcurrentContextSupport();
+        // Register the concurrent context support
+        builder.Services.AddHttpRecorderConcurrentContextSupport();
 
-var app = builder.Build();
+        var app = builder.Build();
 
-app.MapGet("/test", () => "Hello from test server");
+        // Add the middleware that restores the HTTP recorder context for each request
+        app.UseHttpRecorderContextRestorer();
 
-await app.RunAsync();
+        app.MapGet("/test", () => "Hello from test server");
+
+        app.Run();
+    }
+}
