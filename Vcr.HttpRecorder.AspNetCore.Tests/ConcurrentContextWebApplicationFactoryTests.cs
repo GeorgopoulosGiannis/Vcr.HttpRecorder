@@ -1,25 +1,17 @@
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Vcr.HttpRecorder.Context;
 using Xunit;
 
 namespace Vcr.HttpRecorder.AspNetCore.Tests;
 
-public class ConcurrentContextWebApplicationFactoryTests
+public class ConcurrentContextWebApplicationFactoryTests(WebApplicationFactory<Program> factory)
     : IClassFixture<WebApplicationFactory<Program>>
 {
-    private readonly WebApplicationFactory<Program> _factory;
-
-    public ConcurrentContextWebApplicationFactoryTests(WebApplicationFactory<Program> factory)
-    {
-        _factory = factory;
-    }
-
     [Fact]
     public async Task CreateRecorderClient_ShouldWorkWithConcurrentContext()
     {
         // Arrange
-        using var client = _factory.CreateRecorderClient();
+        using var client = factory.CreateRecorderClient();
 
         // Act
         var response = await client.GetAsync("/test");
@@ -40,7 +32,7 @@ public class ConcurrentContextWebApplicationFactoryTests
             HandleCookies = false,
             BaseAddress = new Uri("http://localhost")
         };
-        using var client = _factory.CreateRecorderClient(options);
+        using var client = factory.CreateRecorderClient(options);
 
         // Act
         var response = await client.GetAsync("/test");
