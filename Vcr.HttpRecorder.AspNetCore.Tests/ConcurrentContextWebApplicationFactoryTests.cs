@@ -1,11 +1,6 @@
 using FluentAssertions;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Vcr.HttpRecorder.Context;
 using Vcr.HttpRecorder.Repositories;
 using Xunit;
@@ -59,7 +54,7 @@ public class ConcurrentContextWebApplicationFactoryTests
                 builder.ConfigureServices((context, services) =>
                 {
                     // Register VCR concurrent context support
-                    services.AddHttpRecorderConcurrentContextSupport(context.Configuration);
+                    services.AddHttpRecorderConcurrentContextSupport();
 
                     // Register HttpClient used to call the external API
                     services.AddHttpClient("external", client =>
