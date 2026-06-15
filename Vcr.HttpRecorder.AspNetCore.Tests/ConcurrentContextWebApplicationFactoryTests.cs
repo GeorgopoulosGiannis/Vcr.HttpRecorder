@@ -1,6 +1,9 @@
 using FluentAssertions;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Vcr.HttpRecorder.Context;
 using Vcr.HttpRecorder.Repositories;
 using Xunit;
@@ -90,26 +93,35 @@ public class ConcurrentContextWebApplicationFactoryTests
 
     /// <summary>
     /// Creates a simple external API server that always returns "external".
+    /// Uses HostBuilder with TestServer to avoid deprecated WebHostBuilder.
     /// </summary>
     private TestServer CreateExternalApiServer()
     {
-        var hostBuilder = new WebHostBuilder()
-            .Configure(app =>
+        var host = new HostBuilder()
+            .ConfigureWebHost(webHostBuilder =>
             {
-                app.Run(async context =>
-                {
-                    if (context.Request.Path == "/hello")
+                webHostBuilder
+                    .UseTestServer()
+                    .Configure(app =>
                     {
-                        await context.Response.WriteAsync("external");
-                    }
-                    else
-                    {
-                        context.Response.StatusCode = 404;
-                    }
-                });
-            });
+                        app.Run(async context =>
+                        {
+                            if (context.Request.Path == "/hello")
+                            {
+                                await context.Response.WriteAsync("external");
+                            }
+                            else
+                            {
+                                context.Response.StatusCode = 404;
+                            }
+                        });
+                    });
+            })
+            .Build();
 
-        return new TestServer(hostBuilder);
+        host.Start();
+
+        return host.GetTestServer();
     }
 
     [Fact]
