@@ -183,10 +183,11 @@ public class ConcurrentContextWebApplicationFactoryTests
                        Repository = repository
                    }))
         {
-            // Use a dummy handler and address that would fail if called
+            // Use the same base address as during recording, but a handler that would throw
+            // if the VCR did not intercept the request (safety net).
             using var replayFactory = CreateRecorderEnabledFactory(
                 new HttpClientHandler(),
-                new Uri("http://localhost:9999"));
+                externalBaseAddress);
             using var replayClient = replayFactory.CreateRecorderClient();
 
             var replayResponse = await replayClient.GetAsync("/call-external");
@@ -235,9 +236,11 @@ public class ConcurrentContextWebApplicationFactoryTests
                        Repository = repository
                    }))
         {
+            // Use the same base address as during recording, but a handler that would throw
+            // if the VCR did not intercept the request (safety net).
             using var autoFactory = CreateRecorderEnabledFactory(
                 new HttpClientHandler(),
-                new Uri("http://localhost:9999"));
+                externalBaseAddress);
             using var autoClient = autoFactory.CreateRecorderClient();
 
             var autoResponse = await autoClient.GetAsync("/call-external");
