@@ -13,7 +13,7 @@ public class ConcurrentContextWebApplicationFactoryTests(WebApplicationFactory<P
     {
         // Arrange
         var interactionName = Guid.NewGuid().ToString();
-
+        var name = nameof(PassthroughMode_ShouldCallLiveApi);
         using var context = new HttpRecorderConcurrentContext((_, _) =>
             new HttpRecorderConfiguration
             {
@@ -24,85 +24,82 @@ public class ConcurrentContextWebApplicationFactoryTests(WebApplicationFactory<P
         using var client = factory.CreateRecorderClient();
 
         // Act
-        var response = await client.GetAsync("/test");
+        var response = await client.GetAsync($"/increment?name={name}");
         var content = await response.Content.ReadAsStringAsync();
 
+        var response2 = await client.GetAsync($"/increment?name={name}");
+        var content2 = await response2.Content.ReadAsStringAsync();
+
         // Assert
-        response.EnsureSuccessStatusCode();
-        content.Should().Be("Hello from test server");
+        content.Should().Be("1");
+        content2.Should().Be("2");
     }
 
     [Fact]
     public async Task RecordThenReplay_ShouldReturnSameResponse()
     {
-        // Arrange – first request in Record mode
         var interactionName = Guid.NewGuid().ToString();
-
-        using (var recordContext = new HttpRecorderConcurrentContext((_, _) =>
-            new HttpRecorderConfiguration
-            {
-                Mode = HttpRecorderMode.Record,
-                InteractionName = interactionName
-            }))
+        var name = nameof(RecordThenReplay_ShouldReturnSameResponse);
+        using (new HttpRecorderConcurrentContext((_, _) =>
+                   new HttpRecorderConfiguration
+                   {
+                       Mode = HttpRecorderMode.Record,
+                       InteractionName = interactionName
+                   }))
         {
             using var recordClient = factory.CreateRecorderClient();
-            var recordResponse = await recordClient.GetAsync("/test");
-            recordResponse.EnsureSuccessStatusCode();
+            var recordResponse = await recordClient.GetAsync($"/increment?name={name}");
             var recordContent = await recordResponse.Content.ReadAsStringAsync();
-            recordContent.Should().Be("Hello from test server");
+            recordContent.Should().Be("1");
         }
 
         // Act – second request in Replay mode
-        using (var replayContext = new HttpRecorderConcurrentContext((_, _) =>
-            new HttpRecorderConfiguration
-            {
-                Mode = HttpRecorderMode.Replay,
-                InteractionName = interactionName
-            }))
+        using (new HttpRecorderConcurrentContext((_, _) =>
+                   new HttpRecorderConfiguration
+                   {
+                       Mode = HttpRecorderMode.Replay,
+                       InteractionName = interactionName
+                   }))
         {
             using var replayClient = factory.CreateRecorderClient();
-            var replayResponse = await replayClient.GetAsync("/test");
-            replayResponse.EnsureSuccessStatusCode();
+            var replayResponse = await replayClient.GetAsync($"/increment?name={name}");
             var replayContent = await replayResponse.Content.ReadAsStringAsync();
 
             // Assert – the replayed response matches the recorded one
-            replayContent.Should().Be("Hello from test server");
+            replayContent.Should().Be("1");
         }
     }
 
     [Fact]
     public async Task AutoMode_WithExistingRecording_ShouldReturnRecordedResponse()
     {
-        // Arrange – first request in Record mode to create a recording
         var interactionName = Guid.NewGuid().ToString();
 
-        using (var recordContext = new HttpRecorderConcurrentContext((_, _) =>
-            new HttpRecorderConfiguration
-            {
-                Mode = HttpRecorderMode.Record,
-                InteractionName = interactionName
-            }))
+        using (new HttpRecorderConcurrentContext((_, _) =>
+                   new HttpRecorderConfiguration
+                   {
+                       Mode = HttpRecorderMode.Record,
+                       InteractionName = interactionName
+                   }))
         {
             using var recordClient = factory.CreateRecorderClient();
-            var recordResponse = await recordClient.GetAsync("/test");
-            recordResponse.EnsureSuccessStatusCode();
+            var recordResponse = await recordClient.GetAsync("/increment");
+            var recordContent = await recordResponse.Content.ReadAsStringAsync();
+            recordContent.Should().Be("1");
         }
 
-        // Act – second request in Auto mode (should replay because recording exists)
-        using (var autoContext = new HttpRecorderConcurrentContext((_, _) =>
-            new HttpRecorderConfiguration
-            {
-                Mode = HttpRecorderMode.Auto,
-                InteractionName = interactionName
-            }))
+        using (new HttpRecorderConcurrentContext((_, _) =>
+                   new HttpRecorderConfiguration
+                   {
+                       Mode = HttpRecorderMode.Auto,
+                       InteractionName = interactionName
+                   }))
         {
             using var autoClient = factory.CreateRecorderClient();
-            var autoResponse = await autoClient.GetAsync("/test");
-            autoResponse.EnsureSuccessStatusCode();
+            var autoResponse = await autoClient.GetAsync("/increment");
             var autoContent = await autoResponse.Content.ReadAsStringAsync();
 
-            // Assert – the auto‑replayed response matches the recorded one
-            autoContent.Should().Be("Hello from test server");
+            autoContent.Should().Be("1");
         }
     }
 }
