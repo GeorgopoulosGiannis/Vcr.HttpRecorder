@@ -1,6 +1,10 @@
 using FluentAssertions;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Vcr.HttpRecorder.Context;
 using Vcr.HttpRecorder.Repositories;
 using Xunit;
@@ -30,6 +34,52 @@ public class ConcurrentContextWebApplicationFactoryTests
         {
             _stored = interaction;
             return Task.FromResult(interaction);
+        }
+    }
+
+    /// <summary>
+    /// Helper class that manages an external API test server and provides its handler and base address.
+    /// </summary>
+    private sealed class ExternalApiFixture : IDisposable
+    {
+        public TestServer Server { get; }
+        public HttpMessageHandler Handler { get; }
+        public Uri BaseAddress { get; }
+
+        public ExternalApiFixture()
+        {
+            var host = new HostBuilder()
+                .ConfigureWebHost(webHostBuilder =>
+                {
+                    webHostBuilder
+                        .UseTestServer()
+                        .Configure(app =>
+                        {
+                            app.Run(async context =>
+                            {
+                                if (context.Request.Path == "/hello")
+                                {
+                                    await context.Response.WriteAsync("external");
+                                }
+                                else
+                                {
+                                    context.Response.StatusCode = 404;
+                                }
+                            });
+                        });
+                })
+                .Build();
+
+            host.Start();
+
+            Server = host.GetTestServer();
+            Handler = Server.CreateHandler();
+            BaseAddress = Server.BaseAddress;
+        }
+
+        public void Dispose()
+        {
+            Server?.Dispose();
         }
     }
 
@@ -83,171 +133,119 @@ public class ConcurrentContextWebApplicationFactoryTests
     }
 
     /// <summary>
-    /// Creates a simple external API server that always returns "external".
-    /// Returns its message handler and base address for in-memory communication.
+    /// Executes a test with the given mode and interaction name, using the provided external API fixture.
     /// </summary>
-    private (TestServer Server, HttpMessageHandler Handler, Uri BaseAddress) CreateExternalApiServer()
+    private async Task<string> ExecuteTestWithMode(
+        ExternalApiFixture externalApi,
+        HttpRecorderMode mode,
+        string interactionName,
+        IInteractionRepository repository,
+        HttpMessageHandler? handlerOverride = null,
+        Uri? baseAddressOverride = null)
     {
-        var host = new HostBuilder()
-            .ConfigureWebHost(webHostBuilder =>
+        var handler = handlerOverride ?? externalApi.Handler;
+        var baseAddress = baseAddressOverride ?? externalApi.BaseAddress;
+
+        using var context = new HttpRecorderConcurrentContext((_, _) =>
+            new HttpRecorderConfiguration
             {
-                webHostBuilder
-                    .UseTestServer()
-                    .Configure(app =>
-                    {
-                        app.Run(async context =>
-                        {
-                            if (context.Request.Path == "/hello")
-                            {
-                                await context.Response.WriteAsync("external");
-                            }
-                            else
-                            {
-                                context.Response.StatusCode = 404;
-                            }
-                        });
-                    });
-            })
-            .Build();
+                Mode = mode,
+                InteractionName = interactionName,
+                Repository = repository
+            });
 
-        host.Start();
+        using var factory = CreateRecorderEnabledFactory(handler, baseAddress);
+        using var client = factory.CreateRecorderClient();
 
-        var server = host.GetTestServer();
-        var handler = server.CreateHandler();
-        var baseAddress = server.BaseAddress;
-        return (server, handler, baseAddress);
+        var response = await client.GetAsync("/call-external");
+        var content = await response.Content.ReadAsStringAsync();
+        return content;
     }
 
     [Fact]
     public async Task PassthroughMode_ShouldCallLiveExternalApi()
     {
         // Arrange
-        var (externalServer, externalHandler, externalBaseAddress) = CreateExternalApiServer();
-
-        using var context = new HttpRecorderConcurrentContext((_, _) =>
-            new HttpRecorderConfiguration
-            {
-                Mode = HttpRecorderMode.Passthrough,
-                InteractionName = Guid.NewGuid().ToString(),
-                Repository = new InMemoryInteractionRepository()
-            });
-
-        using var factory = CreateRecorderEnabledFactory(externalHandler, externalBaseAddress);
-        using var client = factory.CreateRecorderClient();
+        using var externalApi = new ExternalApiFixture();
+        var interactionName = Guid.NewGuid().ToString();
+        var repository = new InMemoryInteractionRepository();
 
         // Act
-        var response = await client.GetAsync("/call-external");
-        var content = await response.Content.ReadAsStringAsync();
+        var content = await ExecuteTestWithMode(
+            externalApi,
+            HttpRecorderMode.Passthrough,
+            interactionName,
+            repository);
 
         // Assert – the real external API was called and returned "external"
         content.Should().Be("external");
-
-        externalServer.Dispose();
     }
 
     [Fact]
     public async Task RecordThenReplay_ShouldReturnSameResponseFromExternalApi()
     {
         // Arrange – external API server
-        var (externalServer, externalHandler, externalBaseAddress) = CreateExternalApiServer();
-
+        using var externalApi = new ExternalApiFixture();
         var interactionName = Guid.NewGuid().ToString();
         var repository = new InMemoryInteractionRepository();
 
         // Record mode
-        using (new HttpRecorderConcurrentContext((_, _) =>
-                   new HttpRecorderConfiguration
-                   {
-                       Mode = HttpRecorderMode.Record,
-                       InteractionName = interactionName,
-                       Repository = repository
-                   }))
-        {
-            using var recordFactory = CreateRecorderEnabledFactory(externalHandler, externalBaseAddress);
-            using var recordClient = recordFactory.CreateRecorderClient();
+        var recordedContent = await ExecuteTestWithMode(
+            externalApi,
+            HttpRecorderMode.Record,
+            interactionName,
+            repository);
 
-            var recordResponse = await recordClient.GetAsync("/call-external");
-            var recordContent = await recordResponse.Content.ReadAsStringAsync();
-            recordContent.Should().Be("external");
-        }
+        recordedContent.Should().Be("external");
 
         // Now shut down the real external API to prove replay doesn't call it
-        externalServer.Dispose();
+        externalApi.Dispose();
 
         // Act – replay mode
-        using (new HttpRecorderConcurrentContext((_, _) =>
-                   new HttpRecorderConfiguration
-                   {
-                       Mode = HttpRecorderMode.Replay,
-                       InteractionName = interactionName,
-                       Repository = repository
-                   }))
-        {
-            // Use the same base address as during recording, but a handler that would throw
-            // if the VCR did not intercept the request (safety net).
-            using var replayFactory = CreateRecorderEnabledFactory(
-                new HttpClientHandler(),
-                externalBaseAddress);
-            using var replayClient = replayFactory.CreateRecorderClient();
+        // Use the same base address as during recording, but a handler that would throw
+        // if the VCR did not intercept the request (safety net).
+        var replayContent = await ExecuteTestWithMode(
+            externalApi, // disposed, but we only use its base address and handler override
+            HttpRecorderMode.Replay,
+            interactionName,
+            repository,
+            handlerOverride: new HttpClientHandler(),
+            baseAddressOverride: externalApi.BaseAddress);
 
-            var replayResponse = await replayClient.GetAsync("/call-external");
-            var replayContent = await replayResponse.Content.ReadAsStringAsync();
-
-            // Assert – replayed response matches recorded one, even though external API is gone
-            replayContent.Should().Be("external");
-        }
+        // Assert – replayed response matches recorded one, even though external API is gone
+        replayContent.Should().Be("external");
     }
 
     [Fact]
     public async Task AutoMode_WithExistingRecording_ShouldReturnRecordedResponse()
     {
         // Arrange
-        var (externalServer, externalHandler, externalBaseAddress) = CreateExternalApiServer();
-
+        using var externalApi = new ExternalApiFixture();
         var interactionName = Guid.NewGuid().ToString();
         var repository = new InMemoryInteractionRepository();
 
         // First, record the interaction
-        using (new HttpRecorderConcurrentContext((_, _) =>
-                   new HttpRecorderConfiguration
-                   {
-                       Mode = HttpRecorderMode.Record,
-                       InteractionName = interactionName,
-                       Repository = repository
-                   }))
-        {
-            using var recordFactory = CreateRecorderEnabledFactory(externalHandler, externalBaseAddress);
-            using var recordClient = recordFactory.CreateRecorderClient();
+        var recordedContent = await ExecuteTestWithMode(
+            externalApi,
+            HttpRecorderMode.Record,
+            interactionName,
+            repository);
 
-            var recordResponse = await recordClient.GetAsync("/call-external");
-            var recordContent = await recordResponse.Content.ReadAsStringAsync();
-            recordContent.Should().Be("external");
-        }
+        recordedContent.Should().Be("external");
 
         // Kill the external server to prove replay doesn't hit it
-        externalServer.Dispose();
+        externalApi.Dispose();
 
         // Act – Auto mode (recording exists, so replay)
-        using (new HttpRecorderConcurrentContext((_, _) =>
-                   new HttpRecorderConfiguration
-                   {
-                       Mode = HttpRecorderMode.Auto,
-                       InteractionName = interactionName,
-                       Repository = repository
-                   }))
-        {
-            // Use the same base address as during recording, but a handler that would throw
-            // if the VCR did not intercept the request (safety net).
-            using var autoFactory = CreateRecorderEnabledFactory(
-                new HttpClientHandler(),
-                externalBaseAddress);
-            using var autoClient = autoFactory.CreateRecorderClient();
+        var autoContent = await ExecuteTestWithMode(
+            externalApi, // disposed, but we only use its base address and handler override
+            HttpRecorderMode.Auto,
+            interactionName,
+            repository,
+            handlerOverride: new HttpClientHandler(),
+            baseAddressOverride: externalApi.BaseAddress);
 
-            var autoResponse = await autoClient.GetAsync("/call-external");
-            var autoContent = await autoResponse.Content.ReadAsStringAsync();
-
-            // Assert – response comes from the recording, not the live API
-            autoContent.Should().Be("external");
-        }
+        // Assert – response comes from the recording, not the live API
+        autoContent.Should().Be("external");
     }
 }
