@@ -37,19 +37,24 @@ public class ConcurrentContextWebApplicationFactoryTests
     /// Builds a WebApplicationFactory for the test's main server, adding VCR support
     /// and configuring an external API handler.
     /// </summary>
-    private WebApplicationFactory<Program> CreateRecorderEnabledFactory(HttpMessageHandler externalApiHandler)
+    private WebApplicationFactory<Program> CreateRecorderEnabledFactory(
+        HttpMessageHandler externalApiHandler,
+        Uri externalBaseAddress)
     {
         var factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
                 builder.ConfigureServices((context, services) =>
                 {
-                    // Register VCR concurrent context support (no arguments)
+                    // Register VCR concurrent context support
                     services.AddHttpRecorderConcurrentContextSupport();
 
-                    // Register HttpClient used to call the external API, using the provided handler
-                    services.AddHttpClient("external")
-                        .ConfigurePrimaryHttpMessageHandler(() => externalApiHandler);
+                    // Register HttpClient used to call the external API
+                    services.AddHttpClient("external", client =>
+                    {
+                        client.BaseAddress = externalBaseAddress;
+                    })
+                    .ConfigurePrimaryHttpMessageHandler(() => externalApiHandler);
                 });
 
                 builder.Configure(app =>
@@ -79,9 +84,9 @@ public class ConcurrentContextWebApplicationFactoryTests
 
     /// <summary>
     /// Creates a simple external API server that always returns "external".
-    /// Returns its message handler for in-memory communication.
+    /// Returns its message handler and base address for in-memory communication.
     /// </summary>
-    private (TestServer Server, HttpMessageHandler Handler) CreateExternalApiServer()
+    private (TestServer Server, HttpMessageHandler Handler, Uri BaseAddress) CreateExternalApiServer()
     {
         var host = new HostBuilder()
             .ConfigureWebHost(webHostBuilder =>
@@ -109,14 +114,15 @@ public class ConcurrentContextWebApplicationFactoryTests
 
         var server = host.GetTestServer();
         var handler = server.CreateHandler();
-        return (server, handler);
+        var baseAddress = server.BaseAddress;
+        return (server, handler, baseAddress);
     }
 
     [Fact]
     public async Task PassthroughMode_ShouldCallLiveExternalApi()
     {
         // Arrange
-        var (externalServer, externalHandler) = CreateExternalApiServer();
+        var (externalServer, externalHandler, externalBaseAddress) = CreateExternalApiServer();
 
         using var context = new HttpRecorderConcurrentContext((_, _) =>
             new HttpRecorderConfiguration
@@ -126,7 +132,7 @@ public class ConcurrentContextWebApplicationFactoryTests
                 Repository = new InMemoryInteractionRepository()
             });
 
-        using var factory = CreateRecorderEnabledFactory(externalHandler);
+        using var factory = CreateRecorderEnabledFactory(externalHandler, externalBaseAddress);
         using var client = factory.CreateRecorderClient();
 
         // Act
@@ -143,7 +149,7 @@ public class ConcurrentContextWebApplicationFactoryTests
     public async Task RecordThenReplay_ShouldReturnSameResponseFromExternalApi()
     {
         // Arrange – external API server
-        var (externalServer, externalHandler) = CreateExternalApiServer();
+        var (externalServer, externalHandler, externalBaseAddress) = CreateExternalApiServer();
 
         var interactionName = Guid.NewGuid().ToString();
         var repository = new InMemoryInteractionRepository();
@@ -157,7 +163,7 @@ public class ConcurrentContextWebApplicationFactoryTests
                        Repository = repository
                    }))
         {
-            using var recordFactory = CreateRecorderEnabledFactory(externalHandler);
+            using var recordFactory = CreateRecorderEnabledFactory(externalHandler, externalBaseAddress);
             using var recordClient = recordFactory.CreateRecorderClient();
 
             var recordResponse = await recordClient.GetAsync("/call-external");
@@ -177,8 +183,10 @@ public class ConcurrentContextWebApplicationFactoryTests
                        Repository = repository
                    }))
         {
-            // Use a dummy handler that would fail if called
-            using var replayFactory = CreateRecorderEnabledFactory(new HttpClientHandler());
+            // Use a dummy handler and address that would fail if called
+            using var replayFactory = CreateRecorderEnabledFactory(
+                new HttpClientHandler(),
+                new Uri("http://localhost:9999"));
             using var replayClient = replayFactory.CreateRecorderClient();
 
             var replayResponse = await replayClient.GetAsync("/call-external");
@@ -193,7 +201,7 @@ public class ConcurrentContextWebApplicationFactoryTests
     public async Task AutoMode_WithExistingRecording_ShouldReturnRecordedResponse()
     {
         // Arrange
-        var (externalServer, externalHandler) = CreateExternalApiServer();
+        var (externalServer, externalHandler, externalBaseAddress) = CreateExternalApiServer();
 
         var interactionName = Guid.NewGuid().ToString();
         var repository = new InMemoryInteractionRepository();
@@ -207,7 +215,7 @@ public class ConcurrentContextWebApplicationFactoryTests
                        Repository = repository
                    }))
         {
-            using var recordFactory = CreateRecorderEnabledFactory(externalHandler);
+            using var recordFactory = CreateRecorderEnabledFactory(externalHandler, externalBaseAddress);
             using var recordClient = recordFactory.CreateRecorderClient();
 
             var recordResponse = await recordClient.GetAsync("/call-external");
@@ -227,7 +235,9 @@ public class ConcurrentContextWebApplicationFactoryTests
                        Repository = repository
                    }))
         {
-            using var autoFactory = CreateRecorderEnabledFactory(new HttpClientHandler());
+            using var autoFactory = CreateRecorderEnabledFactory(
+                new HttpClientHandler(),
+                new Uri("http://localhost:9999"));
             using var autoClient = autoFactory.CreateRecorderClient();
 
             var autoResponse = await autoClient.GetAsync("/call-external");
