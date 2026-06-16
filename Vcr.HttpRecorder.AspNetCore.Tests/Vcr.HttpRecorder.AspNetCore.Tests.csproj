@@ -1,12 +1,12 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <IsPackable>false</IsPackable>
         <LangVersion>14</LangVersion>
         <RootNamespace>Vcr.HttpRecorder.AspNetCore.Tests</RootNamespace>
-        <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <AssemblyName>Vcr.HttpRecorder.AspNetCore.Tests</AssemblyName>
     </PropertyGroup>
 
     <ItemGroup>
@@ -30,6 +30,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\Vcr.HttpRecorder.Demo.Web\Vcr.HttpRecorder.Demo.Web.csproj" />
         <ProjectReference Include="..\Vcr.HttpRecorder\Vcr.HttpRecorder.csproj"/>
         <ProjectReference Include="..\Vcr.HttpRecorder.AspNetCore\Vcr.HttpRecorder.AspNetCore.csproj"/>
     </ItemGroup>

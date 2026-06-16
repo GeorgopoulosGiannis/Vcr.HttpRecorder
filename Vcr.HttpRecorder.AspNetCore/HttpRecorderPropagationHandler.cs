@@ -1,8 +1,6 @@
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
+using Vcr.HttpRecorder.Context;
 
-namespace Vcr.HttpRecorder.Context
+namespace Vcr.HttpRecorder.AspNetCore
 {
     /// <summary>
     /// A <see cref="DelegatingHandler"/> that propagates the current <see cref="HttpRecorderConcurrentContext"/>

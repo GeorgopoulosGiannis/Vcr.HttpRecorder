@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Builder;
-using Vcr.HttpRecorder.Context;
 
 namespace Vcr.HttpRecorder.AspNetCore
 {

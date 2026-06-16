@@ -1,0 +1,20 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".github/workflows/publish.yml" />
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+    <File Path="GitVersion.yml" />
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="Vcr.HttpRecorder.AspNetCore.Tests/Vcr.HttpRecorder.AspNetCore.Tests.csproj" />
+  <Project Path="Vcr.HttpRecorder.AspNetCore/Vcr.HttpRecorder.AspNetCore.csproj" />
+  <Project Path="Vcr.HttpRecorder.Demo.Web/Vcr.HttpRecorder.Demo.Web.csproj" />
+  <Project Path="Vcr.HttpRecorder.Tests/Vcr.HttpRecorder.Tests.csproj" />
+  <Project Path="Vcr.HttpRecorder/Vcr.HttpRecorder.csproj" />
+</Solution>

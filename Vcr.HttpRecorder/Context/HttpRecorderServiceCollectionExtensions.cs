@@ -34,9 +34,7 @@ namespace Vcr.HttpRecorder.Context
         {
             services.TryAddEnumerable(
                 ServiceDescriptor.Singleton<IHttpMessageHandlerBuilderFilter, RecorderConcurrentHttpMessageHandlerBuilderFilter>());
-
-            // Middleware registration removed – it belongs to Vcr.HttpRecorder.AspNetCore.
-
+            
             return services;
         }
     }

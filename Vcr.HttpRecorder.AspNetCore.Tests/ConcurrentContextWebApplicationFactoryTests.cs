@@ -1,6 +1,12 @@
 using FluentAssertions;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using System;
+using System.Net.Http;
+using System.Threading.Tasks;
 using Vcr.HttpRecorder.Context;
 using Vcr.HttpRecorder.Repositories;
 using Xunit;
@@ -17,7 +23,7 @@ public class ConcurrentContextWebApplicationFactoryTests
     /// Builds a WebApplicationFactory for the test's main server, adding VCR support
     /// and configuring an external API handler.
     /// </summary>
-    private WebApplicationFactory<Program> CreateRecorderEnabledFactory(
+    private static WebApplicationFactory<Program> CreateRecorderEnabledFactory(
         HttpMessageHandler externalApiHandler,
         Uri externalBaseAddress)
     {
@@ -31,10 +37,10 @@ public class ConcurrentContextWebApplicationFactoryTests
 
                     // Register HttpClient used to call the external API
                     services.AddHttpClient("external", client =>
-                    {
-                        client.BaseAddress = externalBaseAddress;
-                    })
-                    .ConfigurePrimaryHttpMessageHandler(() => externalApiHandler);
+                        {
+                            client.BaseAddress = externalBaseAddress;
+                        })
+                        .ConfigurePrimaryHttpMessageHandler(() => externalApiHandler);
                 });
 
                 builder.Configure(app =>
