@@ -27,7 +27,6 @@ jobs:
       with:
         dotnet-version: '10.0.x'
 
-
     - name: .NET Build
       run: dotnet build --configuration Release -p:Version=${{ env.GitVersion_SemVer }} -p:FileVersion=${{ env.GitVersion_AssemblySemVer }} -p:InformationalVersion=${{ env.GitVersion_InformationalVersion }}
       

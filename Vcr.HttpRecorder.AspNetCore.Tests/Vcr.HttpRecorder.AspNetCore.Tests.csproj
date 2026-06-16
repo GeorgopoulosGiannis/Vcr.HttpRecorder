@@ -30,6 +30,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\Vcr.HttpRecorder.Demo.Web\Vcr.HttpRecorder.Demo.Web.csproj" />
         <ProjectReference Include="..\Vcr.HttpRecorder\Vcr.HttpRecorder.csproj" />
         <ProjectReference Include="..\Vcr.HttpRecorder.AspNetCore\Vcr.HttpRecorder.AspNetCore.csproj" />
     </ItemGroup>
