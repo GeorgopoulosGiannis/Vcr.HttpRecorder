@@ -53,6 +53,20 @@ namespace Vcr.HttpRecorder.Tests.Anonymizers
             result.Messages[0].Response.RequestMessage?.Headers.GetValues("X-RequestHeader").First().Should().Be(RulesInteractionAnonymizer.DefaultAnonymizerReplaceValue);
         }
 
+        [Fact]
+        public async Task ItShouldAnonymizeResponseHeader()
+        {
+            var response = new HttpResponseMessage();
+            response.Headers.TryAddWithoutValidation("X-ResponseHeader", "Value");
+            var interaction = new Interaction("test", [new InteractionMessage(response, new InteractionMessageTimings(DateTimeOffset.UtcNow, TimeSpan.MinValue))]);
+
+            IInteractionAnonymizer anonymizer = RulesInteractionAnonymizer.Default
+                .WithRule(x => x.Response.Headers.Remove("X-ResponseHeader"));
+
+            var result = await anonymizer.Anonymize(interaction);
+            result.Messages[0].Response.Headers.Contains("X-ResponseHeader").Should().BeFalse();
+        }
+
         private Interaction BuildInteraction(params HttpRequestMessage[] requests)
         {
             return new Interaction(
