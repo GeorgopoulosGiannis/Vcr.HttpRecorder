@@ -192,10 +192,10 @@ namespace Vcr.HttpRecorder
         /// </summary>
         /// <param name="response">The <see cref="HttpResponseMessage"/>.</param>
         /// <returns>The <see cref="HttpResponseMessage"/> returned as convenience.</returns>
-#pragma warning disable S2325
-        private Task<HttpResponseMessage> PostProcessResponse(HttpResponseMessage response)
-#pragma warning restore S2325
+        private static async Task<HttpResponseMessage> PostProcessResponse(HttpResponseMessage response)
         {
+            await CloneContent(response);
+
             // Trick to make sure a fake ContentLength is not artificially added by the HttpClient if none was provided by the server.
             // Indeed, the ContentLength is _set_ in the _getter_, but explicitly setting a value opts out of this (undocumented) behaviour.
             // See https://github.com/dotnet/runtime/blob/ebdb045532190ffc664bba9a0a1e3f2ce35cf23f/src/libraries/System.Net.Http/src/System/Net/Http/Headers/HttpContentHeaders.cs#L51
@@ -204,7 +204,21 @@ namespace Vcr.HttpRecorder
                 response.Content.Headers.ContentLength = null;
             }
 
-            return Task.FromResult(response);
+            return response;
+        }
+
+        /// <summary>
+        /// Clones the content of the response so that the same response can be read several times (when using <see cref="RulesMatcher.MatchMultiple"/>).
+        /// </summary>
+        /// <param name="response">The response whose content must be cloned.</param>
+        private static async Task CloneContent(HttpResponseMessage response)
+        {
+            var headers = response.Content.Headers;
+            response.Content = new ByteArrayContent(await response.Content.ReadAsByteArrayAsync());
+            foreach (var header in headers)
+            {
+                response.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            }
         }
     }
 }
