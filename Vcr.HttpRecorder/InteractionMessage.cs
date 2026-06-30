@@ -8,8 +8,6 @@ namespace Vcr.HttpRecorder
     /// </summary>
     public class InteractionMessage
     {
-        private readonly HttpResponseMessage _response;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="InteractionMessage"/> class.
         /// </summary>
@@ -19,14 +17,14 @@ namespace Vcr.HttpRecorder
             HttpResponseMessage response,
             InteractionMessageTimings timings)
         {
-            _response = response;
+            Response = response;
             Timings = timings;
         }
 
         /// <summary>
         /// Gets the <see cref="HttpResponseMessage"/>.
         /// </summary>
-        public HttpResponseMessage Response { get => _response.Clone(); }
+        public HttpResponseMessage Response { get; }
 
         /// <summary>
         /// Gets the <see cref="InteractionMessageTimings"/>.

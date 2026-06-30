@@ -338,21 +338,11 @@ namespace Vcr.HttpRecorder.Tests
             var name = $"{nameof(ItShouldMatchMultipleWhenDisposingTheFirst)}.har";
             var client = CreateHttpClient(HttpRecorderMode.Auto, name, RulesMatcher.MatchMultiple);
 
-            var response = await client.GetAsync(ApiController.JsonUri);
-            await using (await response.Content.ReadAsStreamAsync())
+            for (var i = 0; i < 2; i++)
             {
-                //
+                var json = await client.GetByteArrayAsync(ApiController.JsonUri);
+                json.Should().NotBeNull();
             }
-
-            response.IsSuccessStatusCode.Should().BeTrue();
-
-            response = await client.GetAsync(ApiController.JsonUri);
-            await using (await response.Content.ReadAsStreamAsync())
-            {
-                //
-            }
-
-            response.IsSuccessStatusCode.Should().BeTrue();
         }
 
         [Fact]
