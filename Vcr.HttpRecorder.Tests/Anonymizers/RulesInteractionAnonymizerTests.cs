@@ -2,6 +2,7 @@
 using System;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Vcr.HttpRecorder.Anonymizers;
 using Xunit;
@@ -51,6 +52,46 @@ namespace Vcr.HttpRecorder.Tests.Anonymizers
 
             var result = await anonymizer.Anonymize(interaction);
             result.Messages[0].Response.RequestMessage?.Headers.GetValues("X-RequestHeader").First().Should().Be(RulesInteractionAnonymizer.DefaultAnonymizerReplaceValue);
+            result.Messages[0].Response.RequestMessage?.Content?.Headers.GetValues("X-RequestHeader").First().Should().Be(RulesInteractionAnonymizer.DefaultAnonymizerReplaceValue);
+        }
+
+        [Fact]
+        public async Task ItShouldAnonymizeAuthorizationHeaderWhenRequestHasContent()
+        {
+            var request = new HttpRequestMessage
+            {
+                Content = new StringContent("content"),
+            };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", "secret");
+            var interaction = BuildInteraction(request);
+
+            IInteractionAnonymizer anonymizer = RulesInteractionAnonymizer.Default
+                .AnonymizeRequestHeader("Authorization");
+
+            var result = await anonymizer.Anonymize(interaction);
+
+            result.Messages[0].Response.RequestMessage?.Headers.GetValues("Authorization").First()
+                .Should().Be(RulesInteractionAnonymizer.DefaultAnonymizerReplaceValue);
+            (await result.Messages[0].Response.RequestMessage!.Content!.ReadAsStringAsync())
+                .Should().Be("content");
+        }
+
+        [Fact]
+        public async Task ItShouldAnonymizeContentHeaderWithoutCheckingRequestHeaders()
+        {
+            var request = new HttpRequestMessage
+            {
+                Content = new StringContent("content"),
+            };
+            var interaction = BuildInteraction(request);
+
+            IInteractionAnonymizer anonymizer = RulesInteractionAnonymizer.Default
+                .AnonymizeRequestHeader("Content-Type");
+
+            var result = await anonymizer.Anonymize(interaction);
+
+            result.Messages[0].Response.RequestMessage?.Content?.Headers.GetValues("Content-Type").First()
+                .Should().Be(RulesInteractionAnonymizer.DefaultAnonymizerReplaceValue);
         }
 
         [Fact]

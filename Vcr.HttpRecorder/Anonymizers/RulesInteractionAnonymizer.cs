@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
@@ -100,18 +101,19 @@ namespace Vcr.HttpRecorder.Anonymizers
                     return;
                 }
 
-                if (x.Response.RequestMessage.Headers.Contains(headerName))
-                {
-                    x.Response.RequestMessage.Headers.Remove(headerName);
-                    x.Response.RequestMessage.Headers.TryAddWithoutValidation(headerName, pattern);
-                }
-
-                if (x.Response.RequestMessage.Content != null &&
-                    x.Response.RequestMessage.Content.Headers.Contains(headerName))
-                {
-                    x.Response.RequestMessage.Content.Headers.Remove(headerName);
-                    x.Response.RequestMessage.Content.Headers.TryAddWithoutValidation(headerName, pattern);
-                }
+                AnonymizeHeader(x.Response.RequestMessage.Headers, headerName, pattern);
+                AnonymizeHeader(x.Response.RequestMessage.Content?.Headers, headerName, pattern);
             });
+
+        private static void AnonymizeHeader(HttpHeaders headers, string headerName, string pattern)
+        {
+            var header = headers?
+                .FirstOrDefault(candidate => string.Equals(candidate.Key, headerName, StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrEmpty(header?.Key))
+            {
+                headers.Remove(header.Value.Key);
+                headers.TryAddWithoutValidation(header.Value.Key, pattern);
+            }
+        }
     }
 }
