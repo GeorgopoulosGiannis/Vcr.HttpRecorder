@@ -133,20 +133,21 @@ namespace Vcr.HttpRecorder
                 var innerResponse = await base.SendAsync(request, cancellationToken);
                 sw.Stop();
 
-                var newInteractionMessage = new InteractionMessage(
+                var liveInteractionMessage = new InteractionMessage(
                     innerResponse,
                     new InteractionMessageTimings(start, sw.Elapsed));
+                var recordingMessage = await CloneInteractionMessage(liveInteractionMessage, request);
 
                 _interaction = new Interaction(
                     InteractionName,
                     _interaction == null
-                        ? new[] { newInteractionMessage }
-                        : _interaction.Messages.Append(newInteractionMessage));
+                        ? new[] { recordingMessage }
+                        : _interaction.Messages.Append(recordingMessage));
 
                 _interaction = await _anonymizer.Anonymize(_interaction, cancellationToken);
                 _interaction = await _repository.StoreAsync(_interaction, cancellationToken);
 
-                return await PostProcessResponse(newInteractionMessage.Response);
+                return await PostProcessResponse(innerResponse);
             }
             finally
             {
@@ -194,31 +195,125 @@ namespace Vcr.HttpRecorder
         /// <returns>The <see cref="HttpResponseMessage"/> returned as convenience.</returns>
         private static async Task<HttpResponseMessage> PostProcessResponse(HttpResponseMessage response)
         {
-            await CloneContent(response);
-
-            // Trick to make sure a fake ContentLength is not artificially added by the HttpClient if none was provided by the server.
-            // Indeed, the ContentLength is _set_ in the _getter_, but explicitly setting a value opts out of this (undocumented) behaviour.
-            // See https://github.com/dotnet/runtime/blob/ebdb045532190ffc664bba9a0a1e3f2ce35cf23f/src/libraries/System.Net.Http/src/System/Net/Http/Headers/HttpContentHeaders.cs#L51
-            if (!response.Content.Headers.Contains("Content-Length"))
-            {
-                response.Content.Headers.ContentLength = null;
-            }
+            response.Content = await CloneContent(response.Content);
 
             return response;
         }
 
         /// <summary>
-        /// Clones the content of the response so that the same response can be read several times (when using <see cref="RulesMatcher.MatchMultiple"/>).
+        /// Creates an independent interaction message for anonymization and storage.
         /// </summary>
-        /// <param name="response">The response whose content must be cloned.</param>
-        private static async Task CloneContent(HttpResponseMessage response)
+        /// <param name="message">The live interaction message.</param>
+        /// <param name="fallbackRequest">The request to use when the response does not reference one.</param>
+        /// <returns>An interaction message whose mutable messages, content, and headers are not shared with the live response.</returns>
+        private static async Task<InteractionMessage> CloneInteractionMessage(
+            InteractionMessage message,
+            HttpRequestMessage fallbackRequest)
         {
-            var headers = response.Content.Headers;
-            response.Content = new ByteArrayContent(await response.Content.ReadAsByteArrayAsync());
-            foreach (var header in headers)
+            HttpRequestMessage requestSnapshot = null;
+            HttpResponseMessage responseSnapshot = null;
+            try
             {
-                response.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                var response = message.Response;
+                requestSnapshot = await CloneRequest(response.RequestMessage ?? fallbackRequest);
+                responseSnapshot = new HttpResponseMessage(response.StatusCode);
+                responseSnapshot.Content = await CloneContent(response.Content);
+                responseSnapshot.ReasonPhrase = response.ReasonPhrase;
+                responseSnapshot.RequestMessage = requestSnapshot;
+                responseSnapshot.Version = response.Version;
+
+                foreach (var header in response.Headers)
+                {
+                    responseSnapshot.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                }
+
+                return new InteractionMessage(responseSnapshot, message.Timings);
+            }
+            catch
+            {
+                responseSnapshot?.Dispose();
+                requestSnapshot?.Dispose();
+                throw;
             }
         }
+
+        /// <summary>
+        /// Creates an independent request snapshot for anonymization and storage.
+        /// </summary>
+        /// <param name="request">The request to clone.</param>
+        /// <returns>A cloned request, or null when <paramref name="request"/> is null.</returns>
+        private static async Task<HttpRequestMessage> CloneRequest(HttpRequestMessage request)
+        {
+            if (request == null)
+            {
+                return null;
+            }
+
+            var requestSnapshot = new HttpRequestMessage();
+            try
+            {
+                requestSnapshot.Method = request.Method;
+                requestSnapshot.RequestUri = request.RequestUri;
+                requestSnapshot.Version = request.Version;
+                requestSnapshot.Content = await CloneContent(request.Content);
+                foreach (var header in request.Headers)
+                {
+                    requestSnapshot.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                }
+
+                return requestSnapshot;
+            }
+            catch
+            {
+                requestSnapshot.Dispose();
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Creates independently owned content while preserving its headers.
+        /// </summary>
+        /// <param name="content">The content to clone.</param>
+        /// <returns>Cloned content, or null when <paramref name="content"/> is null.</returns>
+        private static async Task<HttpContent> CloneContent(HttpContent content)
+        {
+            if (content == null)
+            {
+                return null;
+            }
+
+            var hasContentLength = content.Headers.Contains("Content-Length");
+            var headers = content.Headers
+                .Select(header => new
+                {
+                    header.Key,
+                    Values = header.Value.ToArray(),
+                })
+                .ToArray();
+            var contentSnapshot = new ByteArrayContent(
+                (byte[])(await content.ReadAsByteArrayAsync()).Clone());
+            try
+            {
+                foreach (var header in headers)
+                {
+                    contentSnapshot.Headers.TryAddWithoutValidation(header.Key, header.Values);
+                }
+
+                if (!hasContentLength)
+                {
+                    // Avoid adding a computed Content-Length when the source did not contain one.
+                    // Explicitly assigning null opts out of the ByteArrayContent header getter's calculation.
+                    contentSnapshot.Headers.ContentLength = null;
+                }
+
+                return contentSnapshot;
+            }
+            catch
+            {
+                contentSnapshot.Dispose();
+                throw;
+            }
+        }
+
     }
 }
